@@ -1,10 +1,10 @@
 from django.db import models
-from userauth.models import *
+from userauth.models import User
 import random
 from django.core.exceptions import ObjectDoesNotExist
 # Create your models here.
 
-def generateinviteID(length):
+def generateinviteID(length) ->str:
     val=''
     while len(val)<=length:
         val+=str(random.randint(0,9))
@@ -18,7 +18,7 @@ class RoleInvite(models.Model):
     email=models.EmailField(max_length=100,null=True,blank=True)
     role=models.CharField(max_length=100,null=True,blank=True)
     identifier=models.CharField(max_length=100,null=True,blank=True)
-    date_created=models.DateTimeField(auto_now=True)
+    date_created=models.DateTimeField(auto_now_add=True)
 
 
     def __str__(self):

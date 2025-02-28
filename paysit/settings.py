@@ -44,7 +44,12 @@ INSTALLED_APPS = [
     'main',
     'userauth',
     'merchant',
-    'padmin'
+    'padmin',
+
+
+    'oauth2_provider',
+    'social_django',
+    'drf_social_oauth2',
 
 ]
 
@@ -71,6 +76,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
+                 'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -86,6 +94,9 @@ REST_FRAMEWORK = {
      
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.BasicAuthentication',
+
+         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',  # django-oauth-toolkit >= 1.0.0
+        'drf_social_oauth2.authentication.SocialAuthentication',
     )
 
 }
@@ -164,3 +175,25 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # EMAIL_HOST = 'smtp.gmail.com'
 # EMAIL_HOST_USER=''
 # EMAIL_HOST_PASSWORD=''
+
+
+AUTHENTICATION_BACKENDS = (
+    # Google  OAuth2
+    'social_core.backends.google.GoogleOAuth2',
+    # drf-social-oauth2
+
+   'drf_social_oauth2.backends.DjangoOAuth2',
+   'django.contrib.auth.backends.ModelBackend',
+)
+
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '390818397275-fnsq2g53odn0k6hkb7cblatg371t2d1f.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+
+
+# Define SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE to get extra permissions from Google.
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+]
+ACTIVATE_JWT=True

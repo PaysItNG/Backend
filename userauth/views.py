@@ -14,9 +14,20 @@ from rest_framework import generics,viewsets,status
 from django.core.exceptions import ObjectDoesNotExist
 from .models import *
 from django.contrib.auth.hashers import check_password
-
+import requests
+from django.conf import settings
 # Create your views here.
+from rest_framework.decorators import api_view, permission_classes
+import logging
+from django.shortcuts import get_object_or_404
+import datetime
+from main.models import generateinviteID
+from main.emailsender import sendmail
+import string
+import random
+from django.utils import timezone
 
+logger=logging.getLogger(__file__)
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -25,6 +36,19 @@ def get_tokens_for_user(user):
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
+
+def generateidentifier(length)->str:
+    char=string.ascii_lowercase+string.digits
+    token="".join(random.choice(char) for _ in range(length))
+
+    return token
+
+def requestUrl(request)->str:
+    scheme = request.is_secure() and "https" or "http"
+    url=f'{scheme}://{request.get_host()}'
+
+    return url
 
 
 
@@ -79,13 +103,17 @@ class LoginView(APIView):
             if user.check_password(password):
                 if user.is_active == True:
                     token=get_tokens_for_user(user)
-                    serializer=UserSerializer(user,many=False)
+                    serializer=UserSerializer(user,many=False).data
+                    # print(serializer['profile'])
+                    serializer['profile']=UserProfileSerializer(
+                        UserProfile.objects.get(id=serializer['profile']),many=False).data
+                   
                     return Response({
                         'message':'logged in succesfully',
                         'logged_in':True,
                         'status':status.HTTP_200_OK,
                         'token':token,
-                        'data':serializer.data
+                        'data':serializer
                     })
                 else:
                    return Response({
@@ -106,4 +134,121 @@ class LoginView(APIView):
                 'logged_in':False
             })
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def VerifySocialLogin(request):
+    scheme = request.is_secure() and "https" or "http"
+    url=f'{requestUrl(request)}/oauth/convert-token/'
+    print(url)
+    token=request.data.get('access_token')
+    # print(token)
 
+
+    data={
+        'grant_type':'convert_token',
+        'token':token,
+        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+        'backend':'google-oauth2',
+        
+    }
+
+    response=requests.post(url,data=data)
+    logger.debug(response)
+    print(response.json())
+
+    return Response({
+        'data':response.json()
+    })
+
+
+class RequestPasswordChangeView(APIView):
+    
+    permission_classes=[AllowAny]
+    serializer_class=SecuritySerializer
+
+    def post(self,request):
+        email=request.data.get('email')
+        try:
+            user=User.objects.get(email=email)
+
+            try:
+                security=Security.objects.get(user=user)
+                generate_token=generateidentifier(20)
+                
+                token=make_password(generate_token)
+                security.token=generate_token
+                security.save()
+                data={'token':token,
+                      'data':SecuritySerializer(security,many=False).data,
+                      'url':f'{requestUrl(request)}/auth/password/verify?q={generate_token}'
+                      }
+            except ObjectDoesNotExist:
+                security=Security.objects.create(user=user)
+                security.refresh_from_db()
+                generate_token=generateidentifier(20)
+                
+                token=make_password(generate_token)
+                security.token=generate_token
+                security.save()
+
+                data={'token':generate_token,
+                      'data':SecuritySerializer(security,many=False).data,
+                      'url':f'{requestUrl(request)}/auth/password/verify?q={generate_token}'
+                      }
+
+
+            message = """<p>Hi there!, <br> <br>You have requested to change your password. <br> <br>
+            <b>Use """ + generate_token + """ as your verification code</b></p>"""
+            subject = 'Password Change Request'
+            # sendmail([user.email],message,message,subject)
+            return Response(data,status=status.HTTP_202_ACCEPTED)
+            
+
+        except User.DoesNotExist:
+            return Response({
+                'message':'user with email don\'t exist',
+                'status':status.HTTP_404_NOT_FOUND,
+                'user':False
+            })
+        
+class VerifyPasswordRequestChangeView(APIView):
+    permission_classes=[AllowAny]
+    serializer_class=SecuritySerializer
+    def post(self,request):
+        q=str(request.GET.get('q')).strip()
+       
+
+        try:
+            security=Security.objects.get(token=q)
+            now=timezone.now()
+            print(now)
+            security_time=security.date_created
+            print((now-security_time).seconds)
+            
+            if ((now-security_time).seconds < 30):
+                new_password=request.data.get('new_password')
+                security.user.set_password(new_password)
+                security.user.save()
+
+                return Response({
+                    'message':'Password Change Successfully',
+                    'status':status.HTTP_200_OK,
+                    'verified':True
+                })
+            else:
+                return Response({
+                    'message':'this link has elasped it\'s duration',
+                    'status':status.HTTP_200_OK,
+                    'verified':False
+                })
+        except ObjectDoesNotExist:
+            return Response({
+                'verified': False,
+                'message':'Not found',
+                'status':status.HTTP_404_NOT_FOUND
+            })
+
+        
+        
+
+        

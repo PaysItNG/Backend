@@ -16,7 +16,7 @@ def get_tokens_for_user(user):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model=User
-        fields = ['email', 'password','role','id','first_name','is_active','last_name','is_staff','is_superuser']
+        fields = ['email', 'password','role','id','first_name','is_active','last_name','is_staff','is_superuser','profile']
         extra_kwargs = {'password': {'write_only': True},'is_staff': {'read_only': True},
                         'is_active': {'read_only': True},'is_superuser': {'read_only': True},
                         'role':{'read_only':True}
@@ -32,8 +32,8 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
 
-        user_profile=UserProfile.objects.create(user=user)
-        kyc=KYCVerification.objects.create(user=user)
+        # user_profile=UserProfile.objects.create(user=user)
+        # kyc=KYCVerification.objects.create(user=user)
 
         token=get_tokens_for_user(user)
         print(token)
@@ -66,4 +66,11 @@ class KYCVerificationSerializer(serializers.ModelSerializer):
 class UserActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model=UserActivityLog
+        fields="__all__"
+
+
+
+class SecuritySerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Security
         fields="__all__"

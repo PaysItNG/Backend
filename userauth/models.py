@@ -2,7 +2,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser,PermissionsMixin,BaseUserManager
 # Create your models here.
 import uuid
+import datetime
+from django.utils import timezone
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.hashers import make_password
 
 class UserManager(BaseUserManager):  # type: ignore
 
@@ -90,3 +94,23 @@ class UserActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.action} at {self.timestamp}"
+
+
+class Security(models.Model):
+    user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
+    token=models.CharField(max_length=100,null=True,blank=True)
+    locked = models.BooleanField(default=False)
+    two_factor_auth_enabled = models.BooleanField(default=False)
+    
+    login_attempt_count = models.IntegerField(default=0)
+    date_created=models.DateTimeField()
+    
+    class Meta:
+        db_table = 'security'
+
+
+    def save(self,*args,**kwargs):
+       
+        self.date_created=timezone.now()
+
+        super().save(*args,**kwargs)
