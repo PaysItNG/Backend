@@ -42,7 +42,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES)
+    role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
     objects = UserManager()
@@ -74,9 +74,9 @@ class KYCVerification(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
-    id_document = models.ImageField(upload_to='kyc_docs/', blank=True, null=True)
-    selfie = models.ImageField(upload_to='kyc_selfies/', blank=True, null=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    id_document =  models.URLField( blank=True, null=True,max_length=5000)
+    selfie = models.URLField(max_length=5000, blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES,)
     submitted_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
 

@@ -51,6 +51,25 @@ def requestUrl(request)->str:
     return url
 
 
+def getUserData(request):
+    objects={}
+    try:
+        user=UserSerializer(User.objects.get(id=request.user.id),many=False).data
+    except ObjectDoesNotExist:
+        user=[]
+    try:
+        profile=UserProfileSerializer(UserProfile.objects.get(user=request.user),many=False).data
+    except ObjectDoesNotExist:
+        profile=[]
+    
+    objects['user']=user
+    objects['profile']=profile
+
+    return objects
+
+
+
+
 
 class SignupView(APIView):
     serializer_class=UserSerializer
@@ -252,3 +271,53 @@ class VerifyPasswordRequestChangeView(APIView):
         
 
         
+class KycVerificationView(APIView):
+    authentication_classes=[JWTAuthentication]
+    permission_classes=[IsAuthenticated]
+    serializer_class=KYCVerificationSerializer
+
+    def get(self,*args,**kwargs):
+        data=getUserData(self.request)
+        try:
+            kyc_data=KYCVerificationSerializer(
+                KYCVerification.objects.get(user=self.request.user),
+                many=False
+            ).data
+
+            data['kyc']=kyc_data
+            return Response({
+                'data':data,
+                'status':status.HTTP_200_OK
+            })
+        except:
+            return Response({
+                'data':[],
+                'status':status.HTTP_404_NOT_FOUND
+            })
+
+    def put(self,*args,**kwargs):
+        serializer=KYCVerificationSerializer(data=self.request.data)
+
+        if serializer.is_valid():
+            serialized_data=serializer.save(
+                user=self.request.user,
+                status='pending'
+
+
+            )
+
+            return Response({
+                'data':KYCVerificationSerializer(serialized_data).data,
+                'status':'success',
+                'message':'Successfully sent'
+            })
+        else:
+            return Response({
+                'status':'failed',
+                'message':'invalid valid'
+            })
+
+            
+
+
+    
