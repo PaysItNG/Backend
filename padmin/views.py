@@ -17,9 +17,13 @@ from main.emailsender import sendmail
 from main import models as mmodels
 from main.decorators import *
 from main.serializers import *
+from datetime import timedelta
+from django.utils import timezone
 
 
 
+def DurationDifference(s=0,m=0,h=0,d=0):
+    return timezone.now()-timedelta(days=d,seconds=s,hours=h,minutes=m)
 
 class AdminLoginView(APIView):
     authentication_classes=[AllowAny]
@@ -97,19 +101,52 @@ class KycStatusView(APIView):
     @AllowedUsers(allowed_roles=['admin1','admin','staff'])
     def get(self,request,*args,**kwargs):
         kyc_status=request.data.get('kyc_status','')
+        seconds=int(request.data.get('s',0))
+        mins=int(request.data.get('m',0))
+        hours=int(request.data.get('hr',0))
+        days=int(request.data.get('d',0))
+
+        
 
         if kyc_status == '':
+            duration_delta=DurationDifference(seconds,mins,hours,days)
+            data=list(umodels.KYCVerification.objects.all().order_by('-submitted_at'))
+
+            kyc_data=list(filter(lambda x: duration_delta<x.submitted_at<timezone.now(),data))
+            print(kyc_data) 
+            serialized_data=KYCVerificationSerializer(kyc_data
+                    ,many=True).data,
+            
+            
+            # TO BE MODIFIED
+            for serializer in serialized_data[0]:
+                # print(data)
+
+            
+                serializer['user']=UserSerializer(
+                    umodels.User.objects.get(id=serializer['user']),many=False
+                ).data
+
             return Response({
-                'data': KYCVerificationSerializer(
-                    umodels.KYCVerification.objects.all().order_by('-submitted_at'),many=True).data,
+                'data': serialized_data,
                 'status':'success'
             })
         else:
             users=list(umodels.KYCVerification.objects.all().order_by('-submitted_at'))
             kyc_users=filter(lambda x: x.status == kyc_status,users)
+            serializer=KYCVerificationSerializer(kyc_users,many=True).data,
+            data=serializer[0][0]
+
+            # TO BE MODIFIED
+            data['user']=UserSerializer(
+                    umodels.User.objects.get(id=data['user']),many=False
+                ).data
+
+            print(data)
+            
 
             return Response({
-                'data':KYCVerificationSerializer(kyc_users,many=True).data,
+                'data':serializer,
                 'status':'success'
 
             })
