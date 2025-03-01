@@ -57,6 +57,10 @@ class KYCVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model=KYCVerification
         fields="__all__"
+        extra_kwargs={'user':{'read_only':True},
+                      'status':{'read_only':True},
+                      'submitted_at':{'read_only':True},
+                      'reviewed_at':{'read_only':True}}
 
 
 

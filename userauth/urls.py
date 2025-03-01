@@ -11,4 +11,5 @@ urlpatterns = [
     path('verify/social',VerifySocialLogin,name='verify_social'),
     path('password/change',RequestPasswordChangeView.as_view(),name='password_change'),
      path('password/verify',VerifyPasswordRequestChangeView.as_view(),name='password_verify'),
+     path('kyc/apply',KycVerificationView.as_view(),name='kyc_apply'),
 ]

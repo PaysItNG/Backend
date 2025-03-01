@@ -114,10 +114,11 @@ class LoginView(APIView):
 
     def post(self,request):
         email,password=request.data['email'],request.data['password']
-        print(email,password)
+        # print(email,password)
 
         try:
             user=User.objects.get(email=str(email).strip().lower())
+            print(user)
 
             if user.check_password(password):
                 if user.is_active == True:
@@ -244,7 +245,7 @@ class VerifyPasswordRequestChangeView(APIView):
             security_time=security.date_created
             print((now-security_time).seconds)
             
-            if ((now-security_time).seconds < 30):
+            if ((now-security_time).seconds < 60):
                 new_password=request.data.get('new_password')
                 security.user.set_password(new_password)
                 security.user.save()
@@ -292,6 +293,7 @@ class KycVerificationView(APIView):
         except:
             return Response({
                 'data':[],
+                'message':'No KYC status yet',
                 'status':status.HTTP_404_NOT_FOUND
             })
 
@@ -301,9 +303,9 @@ class KycVerificationView(APIView):
         if serializer.is_valid():
             serialized_data=serializer.save(
                 user=self.request.user,
-                status='pending'
-
-
+                submitted_at=timezone.now(),
+                status='pending',
+                submitted=True
             )
 
             return Response({

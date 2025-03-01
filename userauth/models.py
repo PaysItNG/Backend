@@ -76,12 +76,24 @@ class KYCVerification(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
     id_document =  models.URLField( blank=True, null=True,max_length=5000)
     selfie = models.URLField(max_length=5000, blank=True, null=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES,)
-    submitted_at = models.DateTimeField(auto_now_add=True)
-    reviewed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES,blank=True, null=True)
+    submitted=models.BooleanField(default=False)
+    submitted_at = models.DateTimeField(default='', blank=True,null=True)
+    reviewed_at = models.DateTimeField(default='',blank=True,null=True)
 
     def __str__(self):
         return f"KYC Status for {self.user.email}: {self.status}"
+
+    def save(self,*args,**kwargs):
+
+        if self.status == 'verified' or 'rejected':
+            self.reviewed_at=timezone.now()
+        else:
+            self.reviewed_at=None
+        
+
+        super().save(*args,**kwargs)
+
 
 
 

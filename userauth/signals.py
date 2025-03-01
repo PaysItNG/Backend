@@ -9,4 +9,4 @@ from .models import *
 def CreateUserProfile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
-        KYCVerification.objects.create(user=instance)
+        # KYCVerification.objects.create(user=instance)

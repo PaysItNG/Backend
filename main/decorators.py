@@ -13,3 +13,24 @@ def SuperAdminAccess(view_func):
 
             return view_func(self,*args,**kwargs)
     return wrapper_func
+
+
+
+def AllowedUsers(allowed_roles=[]):
+    def decorator(view_func):
+
+
+        def wrapper_func(self,*args,**kwargs):
+            if self.request.user.role in allowed_roles:
+                return view_func(self,*args,**kwargs)
+            
+            
+            else:
+                 return Response({
+                    'status':status.HTTP_403_FORBIDDEN,
+                    'message':'Can\'t perform this action'
+                })
+
+               
+        return wrapper_func
+    return decorator

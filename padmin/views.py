@@ -9,7 +9,8 @@ from rest_framework.permissions import (AllowAny,
                                         
                                         IsAuthenticatedOrReadOnly,
                                         IsAdminUser)
-from userauth.models import *
+from userauth import models as umodels
+from userauth.serializers import *
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from main.emailsender import sendmail
@@ -18,6 +19,13 @@ from main.decorators import *
 from main.serializers import *
 
 
+
+
+class AdminLoginView(APIView):
+    authentication_classes=[AllowAny]
+
+    def post(self,request,*args,**kwargs):
+        pass
 
 
 class SendRoleInvite(APIView):
@@ -81,11 +89,30 @@ class AcceptRoleInvite(APIView):
             })
 
 
-        
+class KycStatusView(APIView):
+    authentication_classes=[JWTAuthentication]
+    permission_classes=[IsAuthenticated]
 
 
-class AdminLoginView(APIView):
-    authentication_classes=[AllowAny]
+    @AllowedUsers(allowed_roles=['admin1','admin','staff'])
+    def get(self,request,*args,**kwargs):
+        kyc_status=request.data.get('kyc_status','')
 
-    def post(self,request,*args,**kwargs):
-        pass
+        if kyc_status == '':
+            return Response({
+                'data': KYCVerificationSerializer(
+                    umodels.KYCVerification.objects.all().order_by('-submitted_at'),many=True).data,
+                'status':'success'
+            })
+        else:
+            users=list(umodels.KYCVerification.objects.all().order_by('-submitted_at'))
+            kyc_users=filter(lambda x: x.status == kyc_status,users)
+
+            return Response({
+                'data':KYCVerificationSerializer(kyc_users,many=True).data,
+                'status':'success'
+
+            })
+
+class ApproveKycView(APIView):
+    pass
