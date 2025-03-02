@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView,ListCreateAPIView
-from .serializers import *
+from main.serializers import *
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import (AllowAny,
                                         IsAuthenticated,
@@ -12,7 +12,7 @@ from rest_framework.permissions import (AllowAny,
 from rest_framework.response import Response
 from rest_framework import generics,viewsets,status
 from django.core.exceptions import ObjectDoesNotExist
-from .models import *
+from main.models import *
 from django.contrib.auth.hashers import check_password
 import requests
 from django.conf import settings
@@ -77,7 +77,7 @@ class SignupView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self,request):
-        email=request.data.get('email')
+        email=str(request.data.get('email')).strip().lower()
         try:
             # print(User.objects.get(email=str(request.data.get('email'))))
             user=User.objects.get(email=email)
@@ -102,6 +102,11 @@ class SignupView(APIView):
                                  'data':UserSerializer(user).data,
                                  'status':status.HTTP_200_OK
                                  })
+            else:
+                return Response({
+                    'message':'invalid data',
+                    'status':'error'
+                })
                
 
 
