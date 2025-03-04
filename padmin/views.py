@@ -98,7 +98,7 @@ class KycStatusView(APIView):
     permission_classes=[IsAuthenticated]
 
 
-    @AllowedUsers(allowed_roles=['admin1','admin','staff'])
+    @AllowedUsers(allowed_roles=['admin1','admin'])
     def get(self,request,*args,**kwargs):
         # FILTER BY STATUS AND  DURATIONS
         kyc_status=request.data.get('kyc_status','')
@@ -160,7 +160,7 @@ class ApproveKycView(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[IsAuthenticated]
 
-    @AllowedUsers(allowed_roles=['admin1','admin','staff'])
+    @AllowedUsers(allowed_roles=['admin1','admin'])
     def get(self,request,id,*args,**kwargs):
         try:
 

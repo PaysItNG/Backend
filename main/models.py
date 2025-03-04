@@ -25,6 +25,12 @@ def generateWalletId(length)->str:
 
     return token
 
+def generateidentifier(length)->str:
+    char=string.ascii_lowercase+string.digits
+    token="".join(random.choice(char) for _ in range(length))
+
+    return token
+
 
 
 class UserManager(BaseUserManager):  # type: ignore
@@ -61,6 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    referral_id=models.CharField(max_length=100,null=True,blank=True)
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
@@ -84,6 +91,8 @@ class UserProfile(models.Model):
     utility_bill=models.URLField(max_length=1000, blank=True, null=True)
     bvn=models.CharField(max_length=100, blank=True, null=True)
     tier=models.CharField(max_length=100,null=True,blank=True, choices=Tiers,default='tier1')
+    referrals=models.ManyToManyField(User,related_name='referrals',blank=True)
+    referee=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE,related_name='referee')
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -95,9 +104,10 @@ class UserProfile(models.Model):
     def save(self,*args,**kwargs):
         if self.bvn != None:
             self.tier='tier2'
-        elif self.bvn != None and self.utility_bill != None:
+        if  self.utility_bill != None :
             self.tier ='tier3'
-        else: pass
+        if self.utility_bill == None and self.bvn == None :
+            self.tier='tier1'
 
         super().save(*args,**kwargs)
 
@@ -224,9 +234,86 @@ class Wallet(models.Model):
 
 
 
+
+class Business(models.Model):
+    owner=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE, related_name='business_owner')
+    company_name=models.CharField(max_length=1000,null=True,blank=True)
+    funds=models.PositiveIntegerField(default=0,blank=True,null=True)
+    staffs=models.ManyToManyField(User,related_name='company_staffs')
+    date_created=models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return f'{self.company_name} owned by {self.owner.email}'
+
+
+
+class BusinessTerminal(models.Model):
+    user=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE)
+    business=models.ForeignKey(Business,null=True,blank=True, on_delete=models.CASCADE)
+   
+
+
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+        ('transfer', 'Transfer'),
+        ('subscription', 'Subscription')
+    ]
+    PAYMENT_TYPE=(
+        ('debit','debit'),
+        ('credit','credit'),
+    )
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed')
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def _str_(self):
+        return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
+    
+    def save(self,*args,**kwargs):
+        ref_id=generateidentifier(10)
+        if self.reference_id == None:
+            try:
+                Transaction.objects.get(reference_id=ref_id)
+
+            except ObjectDoesNotExist:
+                self.reference_id=ref_id
+
+        super().save(*args,**kwargs)
+
 class BankDetails(models.Model):
-    pass
+    user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    account_holder_name=models.CharField(
+        max_length=200,null=True,blank=True
+    )
+    account_number=models.CharField(max_length=200,null=True,blank=True)
+    bank_name=models.CharField(max_length=200,null=True,blank=True)
+    routing_number=models.CharField(max_length=200,null=True,blank=True)
+    card_number=models.CharField(max_length=200,null=True,blank=True)
+    is_primary=models.BooleanField(default=False)
+    created_at=models.DateTimeField(auto_now_add=True,)
+    updated_at=models.DateTimeField(auto_now=True,)
 
 
-class Transactions(models.Model):
-    pass
+    def __str__(self):
+        return f'{self.user.email} bank details'
+
+
+
+
+
+class Card(models.Model):
+    user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    card_number=models.CharField(max_length=200,null=True,blank=True)
