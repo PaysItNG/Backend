@@ -35,7 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
         # kyc=KYCVerification.objects.create(user=user)
 
         token=get_tokens_for_user(user)
-        print(token)
+        # print(token)
         return user
     
     

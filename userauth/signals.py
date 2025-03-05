@@ -8,5 +8,6 @@ from main.models import *
 @receiver(post_save,sender=User)
 def CreateUserProfile(sender, instance, created, **kwargs):
     if created:
+        
         UserProfile.objects.create(user=instance)
         Wallet.objects.create(user=instance)
