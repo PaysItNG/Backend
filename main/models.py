@@ -10,6 +10,7 @@ from django.contrib.auth.hashers import make_password
 import random
 # from userauth.views import generateidentifier
 import string
+import json
 # Create your models here.
 
 def generateinviteID(length) ->str:
@@ -216,7 +217,7 @@ class Wallet(models.Model):
     
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
     wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,null=True,blank=True)
+    funds=models.FloatField(default=0,null=True,blank=True)
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
 
@@ -256,25 +257,27 @@ class BusinessTerminal(models.Model):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ('deposit', 'Deposit'),
-        ('withdrawal', 'Withdrawal'),
-        ('transfer', 'Transfer'),
-        ('subscription', 'Subscription')
+        ('deposit', 'deposit'),
+        ('withdrawal', 'withdrawal'),
+        ('transfer', 'transfer'),
+        ('subscription', 'subscription')
     ]
     PAYMENT_TYPE=(
         ('debit','debit'),
         ('credit','credit'),
     )
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed')
+        ('pending', 'pending'),
+        ('completed', 'completed'),
+        ('failed', 'failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
+    paystack_ref=models.CharField(max_length=100,null=True,blank=True)
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -284,6 +287,16 @@ class Transaction(models.Model):
     
     def save(self,*args,**kwargs):
         ref_id=generateidentifier(10)
+
+        debit_transaction_types=['withdrawal','transfer','subscription']
+        if self.paystack_data!= None:
+            self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
+        if self.transaction_type not in debit_transaction_types:
+            self.payment_type='credit'
+        else:
+            self.payment_type='debit'
+
+            
         if self.reference_id == None:
             try:
                 Transaction.objects.get(reference_id=ref_id)

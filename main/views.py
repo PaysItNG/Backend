@@ -19,5 +19,4 @@ class UserProfileDataView(APIView):
 
 
 
-class DepositFundsView(APIView):
-    pass
+

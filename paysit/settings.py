@@ -13,9 +13,15 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import datetime,timedelta
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+import environ
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -26,7 +32,7 @@ SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -40,11 +46,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+     "corsheaders",
 
     'main',
     'userauth',
     'merchant',
     'padmin',
+    'wallet',
 
 
     'oauth2_provider',
@@ -54,6 +62,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -197,3 +206,11 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 ACTIVATE_JWT=True
+
+
+PSTACK_PUB_KEY=env('Pstack_test_public_key')
+PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
+
+# CORS_ALLOWED_ORIGINS = [
+#     "https://dce7-105-120-130-231.ngrok-free.app"
+# ]

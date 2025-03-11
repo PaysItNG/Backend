@@ -82,3 +82,16 @@ class RoleInviteSerializer(serializers.ModelSerializer):
     class Meta:
         model=RoleInvite
         fields="__all__"
+
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Wallet
+        fields="__all__"
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Transaction
+        fields="__all__"
