@@ -9,7 +9,7 @@ from rest_framework.permissions import (AllowAny,
                                         
                                         IsAuthenticatedOrReadOnly,
                                         IsAdminUser)
-from userauth import models as umodels
+from userauth import models as mmodels
 from userauth.serializers import *
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
@@ -111,7 +111,7 @@ class KycStatusView(APIView):
 
         if kyc_status == '':
             duration_delta=DurationDifference(seconds,mins,hours,days)
-            data=list(umodels.KYCVerification.objects.all().order_by('-submitted_at'))
+            data=list(mmodels.KYCVerification.objects.all().order_by('-submitted_at'))
 
             kyc_data=list(filter(lambda x: duration_delta<x.submitted_at<timezone.now(),data))
             print(kyc_data) 
@@ -122,7 +122,7 @@ class KycStatusView(APIView):
             for serializer in serialized_data[0]:
        
                 serializer['user']=UserSerializer(
-                    umodels.User.objects.get(id=serializer['user']),many=False
+                    mmodels.User.objects.get(id=serializer['user']),many=False
                 ).data
 
             return Response({
@@ -131,7 +131,7 @@ class KycStatusView(APIView):
             })
         else:
             duration_delta=DurationDifference(seconds,mins,hours,days)
-            users=list(umodels.KYCVerification.objects.all().order_by('-submitted_at'))
+            users=list(mmodels.KYCVerification.objects.all().order_by('-submitted_at'))
             kyc_users=list(filter(lambda x: x.status == kyc_status and duration_delta<x.submitted_at<timezone.now(),users))
             serializer=KYCVerificationSerializer(kyc_users,many=True).data,
             
@@ -141,7 +141,7 @@ class KycStatusView(APIView):
             if serializer[0] != []:
                 data=serializer[0][0]
                 data['user']=UserSerializer(
-                        umodels.User.objects.get(id=data['user']),many=False
+                        mmodels.User.objects.get(id=data['user']),many=False
                     ).data
             else: pass
 
@@ -160,13 +160,13 @@ class ApproveKycView(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[IsAuthenticated]
 
-    @AllowedUsers(allowed_roles=['admin1','admin'])
+    @AllowedUsers(allowed_roles=['admin1','admin','staff'])
     def get(self,request,id,*args,**kwargs):
         try:
 
             kyc=KYCVerification.objects.get(id=id)
             serializer=KYCVerificationSerializer(kyc,many=False).data
-            serializer['user']=UserSerializer(umodels.User.objects.get(id=serializer['user']),many=False).data
+            serializer['user']=UserSerializer(mmodels.User.objects.get(id=serializer['user']),many=False).data
 
             return Response({
                 'data':serializer,
@@ -189,7 +189,7 @@ class ApproveKycView(APIView):
             kyc.status=status
             kyc.save()
             serializer=KYCVerificationSerializer(kyc,many=False).data
-            serializer['user']=UserSerializer(umodels.User.objects.get(id=serializer['user']),many=False).data
+            serializer['user']=UserSerializer(mmodels.User.objects.get(id=serializer['user']),many=False).data
 
             return Response({
                 'data':serializer,

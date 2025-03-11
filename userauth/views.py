@@ -229,7 +229,7 @@ class RequestPasswordChangeView(APIView):
             return Response(data,status=status.HTTP_202_ACCEPTED)
             
 
-        except User.DoesNotExist:
+        except ObjectDoesNotExist:
             return Response({
                 'message':'user with email don\'t exist',
                 'status':status.HTTP_404_NOT_FOUND,
