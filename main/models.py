@@ -213,14 +213,17 @@ class RoleInvite(models.Model):
 
 
 class Wallet(models.Model):
-    
+    CURRENCY_CHOICES = [
+    ('NGN', 'Nigerian Naira'),
+    ('USD', 'US Dollar'),
+    ('EUR', 'Euro'),]
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
-    wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,null=True,blank=True)
+    wallet_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='NGN')
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
-
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
 
@@ -281,19 +284,10 @@ class Transaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    def _str_(self):
+    def __str__(self):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
-    def save(self,*args,**kwargs):
-        ref_id=generateidentifier(10)
-        if self.reference_id == None:
-            try:
-                Transaction.objects.get(reference_id=ref_id)
-
-            except ObjectDoesNotExist:
-                self.reference_id=ref_id
-
-        super().save(*args,**kwargs)
+  
 
 class BankDetails(models.Model):
     user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)

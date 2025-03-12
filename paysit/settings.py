@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'userauth',
     'merchant',
     'padmin',
+    #dev_joshua
+    'payment',
 
 
     'oauth2_provider',
