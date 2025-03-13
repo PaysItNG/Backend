@@ -201,4 +201,4 @@ class ApproveKycView(APIView):
                 'message':'not kyc data',
                 'data':[]
             })
-    
+

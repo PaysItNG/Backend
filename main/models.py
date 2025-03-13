@@ -217,7 +217,8 @@ class Wallet(models.Model):
     
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
     wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    funds=models.FloatField(default=0,null=True,blank=True)
+    balance=models.FloatField(default=0,null=True,blank=True)
+    currency=models.CharField(max_length=100,null=True,blank=True)
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
 
@@ -239,7 +240,7 @@ class Wallet(models.Model):
 class Business(models.Model):
     owner=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE, related_name='business_owner')
     company_name=models.CharField(max_length=1000,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,blank=True,null=True)
+    balance=models.FloatField(default=0.00,blank=True,null=True)
     staffs=models.ManyToManyField(User,related_name='company_staffs')
     date_created=models.DateTimeField(auto_now_add=True)
 

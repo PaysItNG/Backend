@@ -112,7 +112,7 @@ class DepositFundsView(APIView):
                 if response['data']['status'] == 'success':
                     transaction.status='completed'
                     user_wallet=Wallet.objects.get(user=request.user)
-                    user_wallet.funds+=float(response['data']['amount'])
+                    user_wallet.balance+=float(response['data']['amount'])
                     user_wallet.save()
                     wallet=WalletSerializer(user_wallet).data
                     deposited=True
@@ -139,7 +139,7 @@ class DepositFundsView(APIView):
 
                 
 
-            print(response)
+            # print(response)
             return Response({
                 'transaction':TransactionSerializer(transaction).data,
                 'wallet':wallet,
@@ -153,3 +153,27 @@ class DepositFundsView(APIView):
 
 
 
+
+class TransferFundsView(APIView):
+    authentication_classes=[JWTAuthentication]
+    permission_classes=[IsAuthenticated]
+    def get(self,request,*args,**kwargs):
+        transfer_type=request.data.get('transfer_type')
+
+        user_wallet=Wallet.objects.get(user=request.user)
+        type=request.GET.get('type')
+        amount=request.GET.get('type')
+        
+        if float(amount)>float(user_wallet.balance):
+            return Response({
+                'message':'insufficient fund'
+            })
+        else:
+
+            if transfer_type == 'in_app':
+                wallet_id=request.data.get('wallet_id')
+            
+            else:
+
+                if transfer_type == 'bank_transfer':
+                    pass
