@@ -95,3 +95,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model=Transaction
         fields="__all__"
+
+
+
+
+class Cardserializer(serializers.ModelSerializer):
+    class Meta:
+        model=Card
+        fields="__all__"

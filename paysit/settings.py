@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'merchant',
     'padmin',
     'wallet',
+    'virtualcard',
 
 
     'oauth2_provider',
@@ -210,6 +211,8 @@ ACTIVATE_JWT=True
 
 PSTACK_PUB_KEY=env('Pstack_test_public_key')
 PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
+STRIPE_PUB_KEY=env('Stripe_test_public_key')
+STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
 
 # CORS_ALLOWED_ORIGINS = [
 #     "https://dce7-105-120-130-231.ngrok-free.app"
