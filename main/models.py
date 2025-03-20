@@ -62,13 +62,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=50,null=True,blank=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=100,null=True,blank=True)
+    last_name = models.CharField(max_length=100,null=True,blank=True)
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     referral_id=models.CharField(max_length=100,null=True,blank=True)
+    token=models.CharField(null=True,blank=True,max_length=1000)
+
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
@@ -217,7 +219,8 @@ class Wallet(models.Model):
     
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
     wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    balance=models.FloatField(default=0,null=True,blank=True)
+    balance=models.FloatField(null=True,blank=True)
+    
     currency=models.CharField(max_length=100,null=True,blank=True)
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
@@ -240,7 +243,7 @@ class Wallet(models.Model):
 class Business(models.Model):
     owner=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE, related_name='business_owner')
     company_name=models.CharField(max_length=1000,null=True,blank=True)
-    balance=models.FloatField(default=0.00,blank=True,null=True)
+    balance=models.FloatField(blank=True,null=True)
     staffs=models.ManyToManyField(User,related_name='company_staffs')
     date_created=models.DateTimeField(auto_now_add=True)
 

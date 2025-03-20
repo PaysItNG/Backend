@@ -26,7 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         user = User.objects.create(email=str(validated_data['email']).lower(),
         username=str(validated_data['email']).lower(),
-        # first_name=str(validated_data['first_name']).lower(),last_name=str(validated_data['last_name']).lower()
+        first_name=str(validated_data['first_name']).lower(),last_name=str(validated_data['last_name']).lower()
         )
         user.set_password(validated_data['password'])
         user.save()
@@ -34,7 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
         # user_profile=UserProfile.objects.create(user=user)
         # kyc=KYCVerification.objects.create(user=user)
 
-        token=get_tokens_for_user(user)
+        # token=get_tokens_for_user(user)
         # print(token)
         return user
     

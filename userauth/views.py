@@ -91,27 +91,64 @@ class SignupView(APIView):
             })
         except ObjectDoesNotExist:
             serializer=UserSerializer(data=request.data)
-            if serializer.is_valid():
-                user=serializer.save(
-                    is_active=False
-                )
-                user.role='user'
-                
-                user.save()
-                return Response({'message':'Signed up successfully',
-                                 'data':UserSerializer(user).data,
-                                 'status':status.HTTP_200_OK
-                                 })
-            else:
-                return Response({
-                    'message':'invalid data',
-                    'status':'error'
-                })
+            token=generateinviteID(5)
+
+            try:
+                User.objects.get(token=token)
+            except User.DoesNotExist:
+                if serializer.is_valid():
+                    user=serializer.save()
+                    user.role='user'
+                    user.is_active=False
+                    user.token=token
+                    
+                    user.save()
+                    return Response({'message':'Signed up successfully',
+                                    'data':UserSerializer(user).data,
+                                    'status':status.HTTP_200_OK,
+                                    'otp':token
+                                    })
+                else:
+                    return Response({
+                        'message':'invalid data',
+                        'status':'error'
+                    })
                
 
 
 
+class VerifyActiveStatusView(APIView):
+    def post(self,request,*args,**kwargs):
+        token=str(request.data.get('otp')).strip()
+        try:
+            user=User.objects.get(token=token)
+            if user.is_active == True:
+                
+                serializer=UserSerializer(User.objects.get(user=user),many=False).data
+                return Response({
+                    'data':serializer,
+                    'status':True,
+                    'message':'This user account has been activated already'
 
+                })
+            else:
+                user.is_active=True
+                user.save()
+                serializer=UserSerializer(user).data
+
+                return Response({
+                    'data':serializer,
+                    'status':True,
+                    'message':'Account successfully activated'
+
+                })
+
+        except ObjectDoesNotExist:
+            return Response({
+                'data':{},
+                'message':'user profile don\'t exist',
+                'status':False
+            })
 
 class LoginView(APIView):
     permission_classes=[AllowAny]

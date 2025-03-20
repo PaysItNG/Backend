@@ -125,6 +125,8 @@ class UpdateCardholderView(APIView):
 
       
 class CardHolderRetrieveView(APIView):
+   permission_classes=[IsAuthenticated]
+   authentication_classes=[JWTAuthentication]
    def get(self,request,*args,**kwargs):
       try:
          card=Card.objects.get(user=request.user)
@@ -145,6 +147,25 @@ class CardHolderRetrieveView(APIView):
             'message':'No card data found'
          }) 
 
+class PaymentWithStripeView(APIView):
+   def post(self,request,*args,**kwargs):
+      amount=request.data.get('amount')
+      currency=request.data.get('currency')
+
+     
+
+      data={
+         'amount':amount,
+         'currency':currency,
+         "automatic_payment_methods[enabled]":False,
+         "payment_method_types": ["card"],
+       
+
+      }
+      res=StripePaymentUtils.create_payment_intent(data=data)
+
+      return Response(res)
+
 
 
 
@@ -157,7 +178,7 @@ class GenerateEphemeralKeys(APIView):
         card=Card.objects.get(user=request.user)
         return Response({
           'secret_key':settings.STRIPE_SECRET_KEY,
-          'secret_key':settings.STRIPE_PUBLIC_KEY,
+          'public_key':settings.STRIPE_PUB_KEY,
           'exists':True,
           'card_id':card.card_ref_id,
           'card_holder_id':card.card_holder_ref_id
@@ -190,7 +211,7 @@ class GenerateEphemeralKeys(APIView):
 
 
 @csrf_exempt
-def my_webhook_view(request):
+def virtualcard_webhook_view(request):
   payload = request.body
   event = None
 
@@ -223,3 +244,35 @@ def my_webhook_view(request):
     print('Unhandled event type {}'.format(event.type))
 
   return HttpResponse(status=200)
+
+
+
+
+@csrf_exempt
+def payment_webhook_view(request):
+   payload = request.body
+   event = None
+
+   try:
+      event = stripe.Event.construct_from(
+         json.loads(payload), stripe.api_key
+      )
+   except ValueError as e:
+      # Invalid payload
+      return HttpResponse(status=400)
+
+   # Handle the event
+   print(event)
+   if event.type == 'payment_intent.succeeded':
+      payment_intent = event.data.object # contains a stripe.PaymentIntent
+      # Then define and call a method to handle the successful payment intent.
+      # handle_payment_intent_succeeded(payment_intent)
+   elif event.type == 'payment_method.attached':
+      payment_method = event.data.object # contains a stripe.PaymentMethod
+      # Then define and call a method to handle the successful attachment of a PaymentMethod.
+      # handle_payment_method_attached(payment_method)
+   # ... handle other event types
+   else:
+      print('Unhandled event type {}'.format(event.type))
+
+   return HttpResponse(status=200)

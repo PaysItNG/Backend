@@ -83,3 +83,15 @@ class StripePaymentUtils():
         data['id'],
         metadata={"order_id": "6735"},
         )
+
+    @staticmethod
+    def create_payment_intent(data):
+        url=f"{base_url}/v1/payment_intents"
+        # res=requests.post(url=url,headers=headers,data=data)
+        res = stripe.PaymentIntent.create(
+            amount=data['amount'],
+            currency=data['currency'],
+            payment_method_types=["card"],  # ✅ Correct (array)
+        )
+
+        return res
