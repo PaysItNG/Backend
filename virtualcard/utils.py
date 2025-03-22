@@ -15,11 +15,12 @@ headers={
     }
 class StripePaymentUtils():
     
-    
-    
 
     @staticmethod
     def create_card_holder(data)->dict:
+        """
+            create a  cardholder instance      
+        """
 
         url=f'{base_url}/v1/issuing/cardholders'
         res=requests.post(url,headers=headers,data=data)
@@ -46,7 +47,9 @@ class StripePaymentUtils():
 
     @staticmethod
     def create_card(data,email):
-        
+        """
+            create a virtual card for user and assign as cardholder       
+        """
 
         url=f"{base_url}/v1/issuing/cards"
         card,created=Card.objects.get_or_create(user__email=email)

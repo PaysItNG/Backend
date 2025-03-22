@@ -12,12 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import datetime,timedelta
-<<<<<<< HEAD
-
-
-=======
 import os
->>>>>>> 5c2e331eec6e792755af1c6970bbb74d1bbaf157
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,13 +51,10 @@ INSTALLED_APPS = [
     'userauth',
     'merchant',
     'padmin',
-<<<<<<< HEAD
     'wallet',
     'virtualcard',
-=======
     #dev_joshua
     'payment',
->>>>>>> 5c2e331eec6e792755af1c6970bbb74d1bbaf157
 
 
     'oauth2_provider',

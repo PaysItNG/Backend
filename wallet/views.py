@@ -44,9 +44,7 @@ def PaystackWebhook(request):
                   msg=json.dumps(payload).encode(),
                   digestmod=hashlib.sha512
                   ).hexdigest()
-    
-    # print('%s %s' %(request.headers['x-paystack-signature'],hash))
-    # print('%s' %(request.headers))
+
     if sig_header!= hash:
         print("failed")
         return Response({
