@@ -47,7 +47,6 @@ def generateidentifier(length)->str:
 def requestUrl(request)->str:
     scheme = request.is_secure() and "https" or "http"
     url=f'{scheme}://{request.get_host()}'
-
     return url
 
 
@@ -81,9 +80,7 @@ class SignupView(APIView):
         try:
             # print(User.objects.get(email=str(request.data.get('email'))))
             user=User.objects.get(email=email)
-            print(type(user))
             serializer=UserSerializer(user)
-
             return Response({
                 'status':status.HTTP_200_OK,
                 'message':'User already exist',
@@ -152,8 +149,6 @@ class VerifyActiveStatusView(APIView):
 
 class LoginView(APIView):
     permission_classes=[AllowAny]
-    
-
     def post(self,request):
         email,password=request.data['email'],request.data['password']
         # print(email,password)

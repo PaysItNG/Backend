@@ -216,16 +216,17 @@ class RoleInvite(models.Model):
 
 
 class Wallet(models.Model):
-    
+    CURRENCY_CHOICES = [
+    ('NGN', 'Nigerian Naira'),
+    ('USD', 'US Dollar'),
+    ('EUR', 'Euro'),]
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
-    wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    balance=models.FloatField(null=True,blank=True)
-    
-    currency=models.CharField(max_length=100,null=True,blank=True)
+    wallet_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='NGN')
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
-
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
 
@@ -235,7 +236,11 @@ class Wallet(models.Model):
             if self.wallet_id not in wallet_ids:
                 self.wallet_id=f'@{generateWalletId(7)}'
 
-        super().save(*args,**kwargs)
+    #     super().save(*args,**kwargs)
+    # def save(self, *args, **kwargs):
+    #     if not self.wallet_id:
+    #         self.wallet_id = uuid.uuid4() 
+        super().save(*args, **kwargs)
 
 
 
@@ -273,20 +278,26 @@ class Transaction(models.Model):
     STATUS_CHOICES = [
         ('pending', 'pending'),
         ('completed', 'completed'),
-        ('failed', 'failed')
+   
+        ('processing', 'processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    to_from =models.CharField(max_length=15,null=True,blank=True)
+    sender_name =models.CharField(max_length=25, null=True,blank=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
     paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
     paystack_ref=models.CharField(max_length=100,null=True,blank=True)
+    description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    def _str_(self):
+    def __str__(self):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
     def save(self,*args,**kwargs):
