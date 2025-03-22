@@ -13,6 +13,9 @@ urlpatterns = [
     path('ephemeral/keys',GenerateEphemeralKeys.as_view(),name='ephemeral_keys'),
     path('webhook/',virtualcard_webhook_view,name='stripe_webhook'),
     path('payment/webhook',payment_webhook_view,name='stripe_payment_webhook'),
+
+
+
     
     
 ]

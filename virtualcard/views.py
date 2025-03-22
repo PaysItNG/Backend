@@ -35,6 +35,7 @@ from django.utils import timezone
 import stripe
 
 from virtualcard.utils import *
+import base64
 
 stripe.api_key=settings.STRIPE_SECRET_KEY
 
@@ -47,6 +48,12 @@ def get_user_ip(request):
     else:
         ip_address = request.META.get('REMOTE_ADDR')
     return ip_address
+
+
+
+# base_url='https://sandbox-api.marqeta.com/v3/'
+
+
 
 
 class CreateVirtualCardView(APIView):
