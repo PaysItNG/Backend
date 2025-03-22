@@ -227,13 +227,17 @@ class Wallet(models.Model):
     def __str__(self):
         return f'{self.user.email} Wallet'
 
-    def save(self,*args,**kwargs):
-        wallet_ids=list(x.wallet_id for x in Wallet.objects.all())
-        if self.wallet_id == None:
-            if self.wallet_id not in wallet_ids:
-                self.wallet_id=f'@{generateWalletId(7)}'
+    # def save(self,*args,**kwargs):
+    #     wallet_ids=list(x.wallet_id for x in Wallet.objects.all())
+    #     if self.wallet_id == None:
+    #         if self.wallet_id not in wallet_ids:
+    #             self.wallet_id=f'@{generateWalletId(7)}'
 
-        super().save(*args,**kwargs)
+    #     super().save(*args,**kwargs)
+    def save(self, *args, **kwargs):
+        if not self.wallet_id:
+            self.wallet_id = uuid.uuid4() 
+        super().save(*args, **kwargs)
 
 
 
@@ -269,17 +273,18 @@ class Transaction(models.Model):
         ('credit','credit'),
     )
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
+        ('processing', 'processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
-    to_from =models.CharField(max_length=15)
+    to_from =models.CharField(max_length=15,null=True,blank=True)
+    sender_name =models.CharField(max_length=25, null=True,blank=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
-    description = models.TextField()
+    description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

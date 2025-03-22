@@ -21,6 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/',include('userauth.urls')),
     path('padmin/',include('padmin.urls')),
-
+    path('payment/',include('payment.urls')),
     re_path(r'^oauth/', include('drf_social_oauth2.urls', namespace='drf'))
 ]

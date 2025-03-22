@@ -199,3 +199,6 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 ACTIVATE_JWT=True
+
+PSTACK_SECRET_KEY="sk_test_71dcb2428868822d8cbd2c3ae99dfa4fde6dd26e"
+PSTACK_PUBLIC_KEY ="pk_test_fe7165c87ee551abd28a94937f8692cc7e3710cb"
