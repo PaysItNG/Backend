@@ -12,7 +12,7 @@ services:
     buildCommand: "./build.sh"
     startCommand: "python -m gunicorn paysit.asgi:application -k uvicorn.workers.UvicornWorker"
     envVars:
-      - key: DATABASE_URL
+      - key: postgres://avnadmin:AVNS_pEoo1GL13BRQErNs5uS@pg-paysit1-apaysit-b9f7.j.aivencloud.com:25827/defaultdb?sslmode=require
         fromDatabase:
           name: defaultdb
           property: connectionString
