@@ -4,5 +4,5 @@ services:
     name: paysitng
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "python -m gunicorn paysit.asgi:application -k uvicorn.workers.UvicornWorker"
+    startCommand: "python -m gunicorn paysit.wsgi:application"
   
