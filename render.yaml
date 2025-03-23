@@ -1,8 +1,8 @@
-databases:
-  - name: paysitdb
-    plan: free
-    databaseName: paysit
-    user: paysit
+# databases:
+#   - name: paysitdb
+#     plan: free
+#     databaseName: paysit
+#     user: paysit
 
 services:
   - type: web
