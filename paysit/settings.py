@@ -134,7 +134,7 @@ if env('PRODUCTION') == '1':
         'default': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',
             'NAME': env('DB_NAME'),
-            'URL':env('DATABASE_URL'),
+            'URL':env('DB_URL'),
             'USER': env('DB_USER'),
             'PASSWORD': env('DB_PASSWORD'),
             'HOST': env('DB_HOST'),
