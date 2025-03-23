@@ -1,8 +1,8 @@
 databases:
-  - name: paysit
+  - name: paysitdb
     plan: free
-    databaseName: defaultdb
-    user: mysite
+    databaseName: paysit
+    user: paysit
 
 services:
   - type: web
