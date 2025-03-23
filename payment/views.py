@@ -18,7 +18,7 @@ from django.shortcuts import get_object_or_404
 
 #import os  
 User = get_user_model()
-PSTACK_PUBLIC_KEY=settings.PSTACK_PUBLIC_KEY
+PSTACK_PUBLIC_KEY=settings.PSTACK_PUB_KEY
 PSTACK_SECRET_KEY=settings.PSTACK_SECRET_KEY
 PayStack =PayStackUtils()
 @method_decorator(csrf_exempt, name='dispatch')
