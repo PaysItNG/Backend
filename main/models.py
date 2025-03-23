@@ -10,6 +10,7 @@ from django.contrib.auth.hashers import make_password
 import random
 # from userauth.views import generateidentifier
 import string
+import json
 # Create your models here.
 
 def generateinviteID(length) ->str:
@@ -61,13 +62,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=50,null=True,blank=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=100,null=True,blank=True)
+    last_name = models.CharField(max_length=100,null=True,blank=True)
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     referral_id=models.CharField(max_length=100,null=True,blank=True)
+    token=models.CharField(null=True,blank=True,max_length=1000)
+
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
@@ -213,14 +216,17 @@ class RoleInvite(models.Model):
 
 
 class Wallet(models.Model):
-    
+    CURRENCY_CHOICES = [
+    ('NGN', 'Nigerian Naira'),
+    ('USD', 'US Dollar'),
+    ('EUR', 'Euro'),]
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
-    wallet_id=models.CharField(max_length=50,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,null=True,blank=True)
+    wallet_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='NGN')
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
-
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
 
@@ -230,7 +236,11 @@ class Wallet(models.Model):
             if self.wallet_id not in wallet_ids:
                 self.wallet_id=f'@{generateWalletId(7)}'
 
-        super().save(*args,**kwargs)
+    #     super().save(*args,**kwargs)
+    # def save(self, *args, **kwargs):
+    #     if not self.wallet_id:
+    #         self.wallet_id = uuid.uuid4() 
+        super().save(*args, **kwargs)
 
 
 
@@ -238,7 +248,7 @@ class Wallet(models.Model):
 class Business(models.Model):
     owner=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE, related_name='business_owner')
     company_name=models.CharField(max_length=1000,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,blank=True,null=True)
+    balance=models.FloatField(blank=True,null=True)
     staffs=models.ManyToManyField(User,related_name='company_staffs')
     date_created=models.DateTimeField(auto_now_add=True)
 
@@ -256,34 +266,52 @@ class BusinessTerminal(models.Model):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ('deposit', 'Deposit'),
-        ('withdrawal', 'Withdrawal'),
-        ('transfer', 'Transfer'),
-        ('subscription', 'Subscription')
+        ('deposit', 'deposit'),
+        ('withdrawal', 'withdrawal'),
+        ('transfer', 'transfer'),
+        ('subscription', 'subscription')
     ]
     PAYMENT_TYPE=(
         ('debit','debit'),
         ('credit','credit'),
     )
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
+        ('pending', 'pending'),
+        ('completed', 'completed'),
+   
+        ('processing', 'processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    to_from =models.CharField(max_length=15,null=True,blank=True)
+    sender_name =models.CharField(max_length=25, null=True,blank=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
+    paystack_ref=models.CharField(max_length=100,null=True,blank=True)
+    description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    def _str_(self):
+    def __str__(self):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
     def save(self,*args,**kwargs):
         ref_id=generateidentifier(10)
+
+        debit_transaction_types=['withdrawal','transfer','subscription']
+        if self.paystack_data!= None:
+            self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
+        if self.transaction_type not in debit_transaction_types:
+            self.payment_type='credit'
+        else:
+            self.payment_type='debit'
+
+            
         if self.reference_id == None:
             try:
                 Transaction.objects.get(reference_id=ref_id)
@@ -310,17 +338,33 @@ class BankDetails(models.Model):
     def __str__(self):
         return f'{self.user.email} bank details'
 
+class Notification(models.Model):
+    user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    message=models.CharField(max_length=1000,null=True,blank=True)
+    is_read=models.BooleanField(default=False)
+    created_at=models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Notification for {self.user.email}'
+
 
 
 
 
 class Card(models.Model):
     user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    card_holder_ref_id=models.CharField(max_length=1000,null=True,blank=True)
+    card_ref_id=models.CharField(max_length=1000,null=True,blank=True)
     card_number=models.CharField(max_length=200,null=True,blank=True)
     card_holder_name=models.CharField(max_length=200,null=True,blank=True)
     expiry_date=models.DateField(null=True,blank=True)
     cvv=models.CharField(max_length=10,null=True,blank=True)
     card_type=models.CharField(max_length=100,null=True,blank=True)
+    card_brand=models.CharField(max_length=100,null=True,blank=True)
+    last_four=models.CharField(max_length=100,null=True,blank=True)
+    
+    status=models.CharField(max_length=100,null=True,blank=True)
+    issued=models.BooleanField(default=False)
     is_primary=models.BooleanField(default=False)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)

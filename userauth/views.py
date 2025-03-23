@@ -47,7 +47,6 @@ def generateidentifier(length)->str:
 def requestUrl(request)->str:
     scheme = request.is_secure() and "https" or "http"
     url=f'{scheme}://{request.get_host()}'
-
     return url
 
 
@@ -81,9 +80,7 @@ class SignupView(APIView):
         try:
             # print(User.objects.get(email=str(request.data.get('email'))))
             user=User.objects.get(email=email)
-            print(type(user))
             serializer=UserSerializer(user)
-
             return Response({
                 'status':status.HTTP_200_OK,
                 'message':'User already exist',
@@ -91,32 +88,67 @@ class SignupView(APIView):
             })
         except ObjectDoesNotExist:
             serializer=UserSerializer(data=request.data)
-            if serializer.is_valid():
-                user=serializer.save(
-                    is_active=False
-                )
-                user.role='user'
-                
-                user.save()
-                return Response({'message':'Signed up successfully',
-                                 'data':UserSerializer(user).data,
-                                 'status':status.HTTP_200_OK
-                                 })
-            else:
-                return Response({
-                    'message':'invalid data',
-                    'status':'error'
-                })
+            token=generateinviteID(5)
+
+            try:
+                User.objects.get(token=token)
+            except User.DoesNotExist:
+                if serializer.is_valid():
+                    user=serializer.save()
+                    user.role='user'
+                    user.is_active=False
+                    user.token=token
+                    
+                    user.save()
+                    return Response({'message':'Signed up successfully',
+                                    'data':UserSerializer(user).data,
+                                    'status':status.HTTP_200_OK,
+                                    'otp':token
+                                    })
+                else:
+                    return Response({
+                        'message':'invalid data',
+                        'status':'error'
+                    })
                
 
 
 
+class VerifyActiveStatusView(APIView):
+    def post(self,request,*args,**kwargs):
+        token=str(request.data.get('otp')).strip()
+        try:
+            user=User.objects.get(token=token)
+            if user.is_active == True:
+                
+                serializer=UserSerializer(User.objects.get(user=user),many=False).data
+                return Response({
+                    'data':serializer,
+                    'status':True,
+                    'message':'This user account has been activated already'
 
+                })
+            else:
+                user.is_active=True
+                user.save()
+                serializer=UserSerializer(user).data
+
+                return Response({
+                    'data':serializer,
+                    'status':True,
+                    'message':'Account successfully activated'
+
+                })
+
+        except ObjectDoesNotExist:
+            return Response({
+                'data':{},
+                'message':'user profile don\'t exist',
+                'status':False
+            })
 
 class LoginView(APIView):
     permission_classes=[AllowAny]
-    
-
     def post(self,request):
         email,password=request.data['email'],request.data['password']
         # print(email,password)
@@ -229,7 +261,7 @@ class RequestPasswordChangeView(APIView):
             return Response(data,status=status.HTTP_202_ACCEPTED)
             
 
-        except User.DoesNotExist:
+        except ObjectDoesNotExist:
             return Response({
                 'message':'user with email don\'t exist',
                 'status':status.HTTP_404_NOT_FOUND,

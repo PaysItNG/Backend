@@ -12,10 +12,15 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import datetime,timedelta
-
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+import environ
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -26,9 +31,9 @@ SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
 
 INSTALLED_APPS = [
@@ -40,11 +45,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+     "corsheaders",
 
     'main',
     'userauth',
     'merchant',
     'padmin',
+    'wallet',
+    'virtualcard',
+    #dev_joshua
+    'payment',
 
 
     'oauth2_provider',
@@ -54,6 +64,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -116,12 +127,26 @@ SIMPLE_JWT = {
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if env('PRODUCTION') == '1':
+     DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': env('DB_NAME'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env('DB_PORT'),
+        }
     }
-}
+
+else:
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -197,3 +222,16 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 ACTIVATE_JWT=True
+
+
+PSTACK_PUB_KEY=env('Pstack_test_public_key')
+PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
+STRIPE_PUB_KEY=env('Stripe_test_public_key')
+STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
+MARQETA_API_KEY=env('Marqueta_api_key')
+ADMIN_ACCESS_TOKEN=env('Admin_access_token')
+
+CORS_ALLOWED_ORIGINS = [
+    # "https://dce7-105-120-130-231.ngrok-free.app"
+    "http://localhost:3000"
+]

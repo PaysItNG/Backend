@@ -7,6 +7,7 @@ from django.conf import settings
 
 urlpatterns = [
     path('register',SignupView.as_view(),name='register'),
+    path('activate/account',VerifyActiveStatusView.as_view(),name='activate_account'),
     path('login',LoginView.as_view(),name='login'),
     path('verify/social',VerifySocialLogin,name='verify_social'),
     path('password/change',RequestPasswordChangeView.as_view(),name='password_change'),
