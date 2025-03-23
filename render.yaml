@@ -10,11 +10,11 @@ services:
     name: paysit
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "python -m gunicorn paysit.asgi:application -k uvicorn.workers.UvicornWorker"
+    startCommand: "python -m gunicorn paysit.asgi:application"
     envVars:
-      - key: postgres://avnadmin:AVNS_pEoo1GL13BRQErNs5uS@pg-paysit1-apaysit-b9f7.j.aivencloud.com:25827/defaultdb?sslmode=require
+      - key: DATABASE_URL
         fromDatabase:
-          name: defaultdb
+          name: paysitdb
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
