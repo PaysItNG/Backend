@@ -6,5 +6,6 @@ urlpatterns = [
     path('api/banks/', BankList.as_view(), name='bank-list'),#list of banks and their codes  
     path('bank/transfer/',BankTransfer.as_view(),name="bank-transfer"),#send money
     path('bank/accounts/',DedicatedAccountList.as_view(),name="bank-transfer"),#retrieve users DBA
-    path('create/user/account/',CreateDBAAPI.as_view(), name ='create-dba'),
+    path('create/user/account/',CreateDBAAPI.as_view(), name ='create-dba'),#for testing only
+    
 ]
