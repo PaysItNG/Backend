@@ -19,10 +19,11 @@ from django.urls import path,include,re_path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('',include('main.urls')),
     path('auth/',include('userauth.urls')),
     path('padmin/',include('padmin.urls')),
     path('wallet/',include('wallet.urls')),
-    path('vcard/',include('virtualcard.urls')),
+    path('virtual-card/',include('virtualcard.urls')),
 
     path('payment/',include('payment.urls')),
     re_path(r'^oauth/', include('drf_social_oauth2.urls', namespace='drf'))

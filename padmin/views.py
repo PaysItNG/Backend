@@ -114,7 +114,6 @@ class KycStatusView(APIView):
             data=list(mmodels.KYCVerification.objects.all().order_by('-submitted_at'))
 
             kyc_data=list(filter(lambda x: duration_delta<x.submitted_at<timezone.now(),data))
-            print(kyc_data) 
             serialized_data=KYCVerificationSerializer(kyc_data
                     ,many=True).data,
             
