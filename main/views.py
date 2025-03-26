@@ -32,7 +32,7 @@ def APIendpoints(request):
 
              ['virtual-card/',
               ['create/','retrieve/cardholder/','update/cardholder', 'fund/payment/',
-               'ephemeral/keys/','payment/webhook/',],
+               'ephemeral/keys/','payment/webhook/', "more/"],
              ],
 
            

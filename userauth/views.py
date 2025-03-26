@@ -23,11 +23,16 @@ from django.shortcuts import get_object_or_404
 import datetime
 from main.models import generateinviteID
 from main.emailsender import sendmail
+from rest_framework import status
+
 import string
 import random
 from django.utils import timezone
+from .signals import send_user_message
+from payment.utils import PayStackUtils
 
 logger=logging.getLogger(__file__)
+PaysTack =PayStackUtils()
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -69,84 +74,80 @@ def getUserData(request):
 
 
 
-
 class SignupView(APIView):
-    serializer_class=UserSerializer
-    # authentication_classes=(JWTAuthentication,)
+    serializer_class = UserSerializer
     permission_classes = (AllowAny,)
 
-    def post(self,request):
-        email=str(request.data.get('email')).strip().lower()
-        try:
-            # print(User.objects.get(email=str(request.data.get('email'))))
-            user=User.objects.get(email=email)
-            serializer=UserSerializer(user)
-            return Response({
-                'status':status.HTTP_200_OK,
-                'message':'User already exist',
-                'email_exist':True
-            })
-        except ObjectDoesNotExist:
-            serializer=UserSerializer(data=request.data)
-            token=generateinviteID(5)
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'message': 'Email is required', 'status': 'error'}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if user already exists
+        if User.objects.filter(email=email).exists():
+            return Response({'message': 'User already exists', 'email_exist': True}, status=status.HTTP_400_BAD_REQUEST)
+        # Serialize and validate user data
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save(role='user', is_active=False)
+            raw_otp = generate_otp()
+            otp_hash = hash_otp(raw_otp)
+            OTP.objects.create(
+                user=user,
+                otp_hash=otp_hash,
+                expires_at=timezone.now() + timezone.timedelta(minutes=5)
+            )
 
-            try:
-                User.objects.get(token=token)
-            except User.DoesNotExist:
-                if serializer.is_valid():
-                    user=serializer.save()
-                    user.role='user'
-                    user.is_active=False
-                    user.token=token
-                    
-                    user.save()
-                    return Response({'message':'Signed up successfully',
-                                    'data':UserSerializer(user).data,
-                                    'status':status.HTTP_200_OK,
-                                    'otp':token
-                                    })
-                else:
-                    return Response({
-                        'message':'invalid data',
-                        'status':'error'
-                    })
+            # Send OTP via email
+            send_user_message(
+                "Your OTP Code",
+                f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
+                user
+            )
+            return Response({
+                'message': 'Signup successful. OTP sent to email.',
+                'status': status.HTTP_201_CREATED,
+                'data': UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Invalid data', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
                
 
 
-
-class VerifyActiveStatusView(APIView):
-    def post(self,request,*args,**kwargs):
-        token=str(request.data.get('otp')).strip()
+class VerifyOTPView(APIView):
+    permission_classes=[]
+    def post(self, request):
+        otp = request.data.get("otp")
+        email = request.data.get("email")
+        if not otp or not email:
+            return Response({"message": "OTP and email are required", "status": False}, status=400)
         try:
-            user=User.objects.get(token=token)
-            if user.is_active == True:
+            user = User.objects.get(email=email)
+            hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
+            otp_instance = OTP.objects.filter(user=user, otp_hash=hashed_otp).first()
+            if not otp_instance:
+                return Response({"message": "Invalid OTP", }, status=status.HTTP_400_BAD_REQUEST)
+            if otp_instance.is_expired():
                 
-                serializer=UserSerializer(User.objects.get(user=user),many=False).data
-                return Response({
-                    'data':serializer,
-                    'status':True,
-                    'message':'This user account has been activated already'
-
-                })
-            else:
-                user.is_active=True
-                user.save()
-                serializer=UserSerializer(user).data
-
-                return Response({
-                    'data':serializer,
-                    'status':True,
-                    'message':'Account successfully activated'
-
-                })
-
-        except ObjectDoesNotExist:
-            return Response({
-                'data':{},
-                'message':'user profile don\'t exist',
-                'status':False
-            })
-
+                raw_otp = generate_otp()
+                otp_hash = hash_otp(raw_otp)
+                otp,_ =OTP.objects.get_or_create(
+                    user=user)
+                otp.otp_hash=otp_hash,
+                otp.expires_at=timezone.now() + timezone.timedelta(minutes=5)
+                otp.save()
+                send_user_message(
+                        "Your OTP Code",
+                        f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
+                        user
+                            )
+                return Response({"message": "OTP has expired, check your email for new one", }, status=status.HTTP_400_BAD_REQUEST)
+            user.is_active = True
+            user.save()
+            otp_instance.delete()
+            dva_account = PaysTack.create_customer_and_virtual_account(user.email,user.first_name,user.last_name,user.phone_number) 
+            return Response({"message": "OTP verified successfully", },status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
 class LoginView(APIView):
     permission_classes=[AllowAny]
     def post(self,request):

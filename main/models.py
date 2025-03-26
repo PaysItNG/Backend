@@ -11,13 +11,13 @@ import random
 # from userauth.views import generateidentifier
 import string
 import json
+import hashlib
 # Create your models here.
 
 def generateinviteID(length) ->str:
     val=''
     while len(val)<=length:
         val+=str(random.randint(0,9))
-    
     return val
 
 def generateWalletId(length)->str:
@@ -33,6 +33,13 @@ def generateidentifier(length)->str:
     return token
 
 
+def generate_otp():
+    """Generates a 6-digit numeric OTP"""
+    return ''.join(random.choices(string.digits, k=6))
+
+def hash_otp(otp):
+    """Hashes the OTP using SHA256"""
+    return hashlib.sha256(otp.encode()).hexdigest()
 
 class UserManager(BaseUserManager):  # type: ignore
 
@@ -68,8 +75,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    referral_id=models.CharField(max_length=100,null=True,blank=True)
-    token=models.CharField(null=True,blank=True,max_length=1000)
 
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -81,6 +86,29 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
+class OTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otps")
+    otp_hash = models.CharField(max_length=64, unique=True)  # Store hashed OTP
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        """Check if OTP is expired"""
+        return timezone.now() > self.expires_at
+
+    def create_otp(self):
+        """Generate and save an OTP for a user"""
+        raw_otp = generate_otp()
+        hashed_otp = hash_otp(raw_otp)
+        expiration_time = timezone.now() + datetime.timedelta(minutes=5)  # Set expiry time
+
+        otp_instance = self.objects.create(
+            user=self.user,
+            otp_hash=hashed_otp,
+            expires_at=expiration_time
+        )
+
+        return raw_otp  # Return raw OTP for sending via email/SMS
 
 class UserProfile(models.Model):
     Tiers=(
@@ -96,6 +124,7 @@ class UserProfile(models.Model):
     tier=models.CharField(max_length=100,null=True,blank=True, choices=Tiers,default='tier1')
     referrals=models.ManyToManyField(User,related_name='referrals',blank=True)
     referee=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE,related_name='referee')
+    referral_id=models.CharField(max_length=100,null=True,blank=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -229,18 +258,15 @@ class Wallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
+def save(self, *args, **kwargs):  
+    if self.wallet_id is None:  
+        wallet_id = generateinviteID(7)  
+        # Ensure uniqueness of wallet_id  
+        while self.__class__.objects.filter(wallet_id=wallet_id).exists():  
+            wallet_id = generateinviteID(7)  
+        self.wallet_id = f'@{wallet_id}'  
+    super().save(*args, **kwargs) 
 
-    def save(self,*args,**kwargs):
-        wallet_ids=list(x.wallet_id for x in Wallet.objects.all())
-        if self.wallet_id == None:
-            if self.wallet_id not in wallet_ids:
-                self.wallet_id=f'@{generateWalletId(7)}'
-
-    #     super().save(*args,**kwargs)
-    # def save(self, *args, **kwargs):
-    #     if not self.wallet_id:
-    #         self.wallet_id = uuid.uuid4() 
-        super().save(*args, **kwargs)
 
 
 
