@@ -23,14 +23,12 @@ from django.shortcuts import get_object_or_404
 import datetime
 from main.models import generateinviteID
 from main.emailsender import sendmail
-from rest_framework import status
-
 import string
 import random
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 
 logger=logging.getLogger(__file__)
-PaysTack =PayStackUtils()
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -72,35 +70,18 @@ def getUserData(request):
 
 
 
+
 class SignupView(APIView):
-    serializer_class = UserSerializer
+    serializer_class=UserSerializer
+    # authentication_classes=(JWTAuthentication,)
     permission_classes = (AllowAny,)
 
-    def post(self, request):
-        email = request.data.get('email', '').strip().lower()
-        if not email:
-            return Response({'message': 'Email is required', 'status': 'error'}, status=status.HTTP_400_BAD_REQUEST)
-        # Check if user already exists
-        if User.objects.filter(email=email).exists():
-            return Response({'message': 'User already exists', 'email_exist': True}, status=status.HTTP_400_BAD_REQUEST)
-        # Serialize and validate user data
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save(role='user', is_active=False)
-            raw_otp = generate_otp()
-            otp_hash = hash_otp(raw_otp)
-            OTP.objects.create(
-                user=user,
-                otp_hash=otp_hash,
-                expires_at=timezone.now() + timezone.timedelta(minutes=5)
-            )
-
-            # Send OTP via email
-            send_user_message(
-                "Your OTP Code",
-                f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
-                user
-            )
+    def post(self,request):
+        email=str(request.data.get('email')).strip().lower()
+        try:
+            # print(User.objects.get(email=str(request.data.get('email'))))
+            user=User.objects.get(email=email)
+            serializer=UserSerializer(user)
             return Response({
                 'status':status.HTTP_200_OK,
                 'message':'User already exist',
@@ -112,14 +93,20 @@ class SignupView(APIView):
 
             try:
                 User.objects.get(token=token)
+
+                
             except User.DoesNotExist:
                 if serializer.is_valid():
                     user=serializer.save()
                     user.role='user'
                     user.is_active=False
-                    user.token=token
+                    user.token=make_password(token)
                     
                     user.save()
+
+                    """
+                        send user mail after succesful signed up
+                    """
                     return Response({'message':'Signed up successfully',
                                     'data':UserSerializer(user).data,
                                     'status':status.HTTP_200_OK,
@@ -138,25 +125,31 @@ class VerifyActiveStatusView(APIView):
     def post(self,request,*args,**kwargs):
         token=str(request.data.get('otp')).strip()
         try:
-            user=User.objects.get(token=token)
+            user=User.objects.get(token=make_password(token))
             if user.is_active == True:
                 
-                serializer=UserSerializer(User.objects.get(user=user),many=False).data
+                serializer=UserSerializer(user,many=False).data
                 return Response({
                     'data':serializer,
-                    'status':True,
-                    'message':'This user account has been activated already'
+                    'verified':True,
+                    'message':'This user account has been activated already',
+                    'status':status.HTTP_200_OK
 
                 })
             else:
                 user.is_active=True
                 user.save()
                 serializer=UserSerializer(user).data
+                
+                """
+                    send user mail after successful verification
+                """
 
                 return Response({
                     'data':serializer,
-                    'status':True,
-                    'message':'Account successfully activated'
+                    'verified':True,
+                    'message':'Account successfully activated',
+                    'status':status.HTTP_200_OK
 
                 })
 
@@ -164,7 +157,8 @@ class VerifyActiveStatusView(APIView):
             return Response({
                 'data':{},
                 'message':'user profile don\'t exist',
-                'status':False
+                'verified':False,
+                'status':status.HTTP_403_FORBIDDEN
             })
 
 class LoginView(APIView):
@@ -294,10 +288,13 @@ class VerifyPasswordRequestChangeView(APIView):
     def post(self,request):
         q=str(request.GET.get('q')).strip()
        
+
         try:
             security=Security.objects.get(token=q)
             now=timezone.now()
+            print(now)
             security_time=security.date_created
+            print((now-security_time).seconds)
             
             if ((now-security_time).seconds < 60):
                 new_password=request.data.get('new_password')
