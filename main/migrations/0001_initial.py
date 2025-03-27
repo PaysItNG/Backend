@@ -183,6 +183,8 @@ class Migration(migrations.Migration):
                 ('card_type', models.CharField(blank=True, max_length=100, null=True)),
                 ('card_brand', models.CharField(blank=True, max_length=100, null=True)),
                 ('last_four', models.CharField(blank=True, max_length=100, null=True)),
+                ('balance', models.DecimalField(decimal_places=2, default=0.0, max_digits=15)),
+                ('currency', models.CharField(choices=[('USD', 'US Dollar'), ('EUR', 'Euro')], default='USD', max_length=3)),
                 ('status', models.CharField(blank=True, max_length=100, null=True)),
                 ('issued', models.BooleanField(default=False)),
                 ('is_primary', models.BooleanField(default=False)),

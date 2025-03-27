@@ -378,6 +378,10 @@ class Notification(models.Model):
 
 
 class Card(models.Model):
+    CURRENCY_CHOICES = [
+   
+    ('USD', 'US Dollar'),
+    ('EUR', 'Euro'),]
     user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
     card_holder_ref_id=models.CharField(max_length=1000,null=True,blank=True)
     card_ref_id=models.CharField(max_length=1000,null=True,blank=True)
@@ -388,7 +392,8 @@ class Card(models.Model):
     card_type=models.CharField(max_length=100,null=True,blank=True)
     card_brand=models.CharField(max_length=100,null=True,blank=True)
     last_four=models.CharField(max_length=100,null=True,blank=True)
-    
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
     status=models.CharField(max_length=100,null=True,blank=True)
     issued=models.BooleanField(default=False)
     is_primary=models.BooleanField(default=False)
