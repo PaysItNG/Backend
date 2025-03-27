@@ -19,6 +19,7 @@ from main.decorators import *
 from main.serializers import *
 from datetime import timedelta
 from django.utils import timezone
+from rest_framework import status
 
 
 
@@ -53,7 +54,9 @@ class SendRoleInvite(APIView):
             role=str(role).strip().lower()
         )
 
-        body=f'<h2>Hello you\'ve been assigned the role of an {role} on paysit kindly click the link below to accept this invitation thanks</br> {url}</h2>'
+        body=f'''<h2>Hello you\'ve been assigned the role of an 
+                    {role} on paysit kindly click the link below to accept this invitation thanks</br> {url}
+                    </h2>'''
         sender={
             'email':'paysit@info.com',
             'name':'paysit'
@@ -127,7 +130,7 @@ class KycStatusView(APIView):
 
             return Response({
                 'data': serialized_data,
-                'status':'success'
+                'status':status.HTTP_200_OK,
             })
         else:
             duration_delta=DurationDifference(seconds,mins,hours,days)
@@ -150,7 +153,7 @@ class KycStatusView(APIView):
 
             return Response({
                 'data':serializer,
-                'status':'success'
+                'status':status.HTTP_200_OK,
 
             })
 
@@ -170,11 +173,12 @@ class ApproveKycView(APIView):
 
             return Response({
                 'data':serializer,
-                'status':'ok'
+                'status':status.HTTP_200_OK,
+
             })
         except ObjectDoesNotExist:
             return Response({
-                'status':'error',
+                'status': status.HTTP_204_NO_CONTENT,
                 'message':'not kyc data',
                 'data':[]
             })
@@ -182,22 +186,22 @@ class ApproveKycView(APIView):
 
     @AllowedUsers(allowed_roles=['admin1','admin','staff'])
     def put(self,request,id,*args,**kwargs):
-        status=request.data.get('status')
+        user_status=request.data.get('status')
         try:
 
             kyc=KYCVerification.objects.get(id=id)
-            kyc.status=status
+            kyc.status=user_status
             kyc.save()
             serializer=KYCVerificationSerializer(kyc,many=False).data
             serializer['user']=UserSerializer(mmodels.User.objects.get(id=serializer['user']),many=False).data
 
             return Response({
                 'data':serializer,
-                'status':'ok'
+                'status':status.HTTP_200_OK
             })
         except ObjectDoesNotExist:
             return Response({
-                'status':'error',
+                'status':status.HTTP_204_NO_CONTENT,
                 'message':'not kyc data',
                 'data':[]
             })
