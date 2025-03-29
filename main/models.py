@@ -33,9 +33,9 @@ def generateidentifier(length)->str:
     return token
 
 
-def generate_otp():
+def generate_otp(length):
     """Generates a 6-digit numeric OTP"""
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(random.choices(string.digits, k=length))
 
 def hash_otp(otp):
     """Hashes the OTP using SHA256"""
@@ -75,7 +75,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
@@ -96,19 +95,21 @@ class OTP(models.Model):
         """Check if OTP is expired"""
         return timezone.now() > self.expires_at
 
-    def create_otp(self):
+    def create_otp(self,user,duration='minutes',value=5):
         """Generate and save an OTP for a user"""
-        raw_otp = generate_otp()
+        raw_otp = generate_otp(6)
         hashed_otp = hash_otp(raw_otp)
-        expiration_time = timezone.now() + datetime.timedelta(minutes=5)  # Set expiry time
+        expiration_time = timezone.now() + datetime.timedelta(duration=value)  # Set expiry time
 
         otp_instance = self.objects.create(
-            user=self.user,
+            user=user,
             otp_hash=hashed_otp,
             expires_at=expiration_time
         )
 
         return raw_otp  # Return raw OTP for sending via email/SMS
+    
+    
 
 class UserProfile(models.Model):
     Tiers=(
@@ -231,9 +232,9 @@ class RoleInvite(models.Model):
         user_emails=[user.email for user in list(User.objects.all())]
 
         if self.email in user_emails:
-            self.user=User.objects.get(email=self.email)
+            self.user=self.objects.get(email=self.email)
         else:
-            user=User.objects.create(
+            user=self.objects.create(
                 email=self.email.strip(),
                 username=self.email.strip(),
             )
@@ -258,14 +259,16 @@ class Wallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
-def save(self, *args, **kwargs):  
-    if self.wallet_id is None:  
-        wallet_id = generateinviteID(7)  
-        # Ensure uniqueness of wallet_id  
-        while self.__class__.objects.filter(wallet_id=wallet_id).exists():  
+    
+    
+    def save(self, *args, **kwargs):  
+        if self.wallet_id is None:  
             wallet_id = generateinviteID(7)  
-        self.wallet_id = f'@{wallet_id}'  
-    super().save(*args, **kwargs) 
+            # Ensure uniqueness of wallet_id  
+            while self.__class__.objects.filter(wallet_id=wallet_id).exists():  
+                wallet_id = generateinviteID(7)  
+            self.wallet_id = f'@{wallet_id}'  
+        super().save(*args, **kwargs) 
 
 
 

@@ -177,7 +177,7 @@ class PaymentWithStripeView(APIView):
 
 
 class GenerateEphemeralKeys(APIView):
-   permission_classes=[IsAuthenticated]
+   permission_classes=[AllowAny]
    authentication_classes=[JWTAuthentication]
 
    def get(self,request,*args,**kwargs):

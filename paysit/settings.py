@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["localhost",'127.0.0.1']
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
@@ -64,9 +64,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
-        'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -241,9 +242,15 @@ MARQETA_API_KEY=env('Marqueta_api_key')
 ADMIN_ACCESS_TOKEN=env('Admin_access_token')
 
 CORS_ALLOWED_ORIGINS = [
-    # "https://dce7-105-120-130-231.ngrok-free.app"
+    # "https://backend-hr0w.onrender.com",
     "http://localhost:3000"
 ]
+
+# CORS_ORIGIN_WHITELIST = [
+#     "http://localhost:3000"
+# ]
+# CORS_ALLOW_ALL_ORIGINS = True
+
 
 
 STATIC_URL = '/static/'
