@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ["localhost",'127.0.0.1']
+ALLOWED_HOSTS = ["*"]
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
