@@ -76,7 +76,7 @@ def getUserData(request):
 
 class SignupView(APIView):
     serializer_class = UserSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
@@ -89,7 +89,7 @@ class SignupView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save(role='user', is_active=False)
-            raw_otp = generate_otp()
+            raw_otp = generate_otp(6)
             otp_hash = hash_otp(raw_otp)
             OTP.objects.create(
                 user=user,
@@ -105,9 +105,9 @@ class SignupView(APIView):
             )
             return Response({
                 'message': 'Signup successful. OTP sent to email.',
-                'status': status.HTTP_201_CREATED,
+                'status': status.HTTP_200_OK,
                 'data': UserSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
+            }, status=status.HTTP_200_OK)
         return Response({'message': 'Invalid data', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
                
 
@@ -127,7 +127,7 @@ class VerifyOTPView(APIView):
                 return Response({"message": "Invalid OTP", }, status=status.HTTP_400_BAD_REQUEST)
             if otp_instance.is_expired():
                 
-                raw_otp = generate_otp()
+                raw_otp = generate_otp(6)
                 otp_hash = hash_otp(raw_otp)
                 otp,_ =OTP.objects.get_or_create(
                     user=user)
@@ -188,7 +188,7 @@ class LoginView(APIView):
         except ObjectDoesNotExist:
             return Response({
                 'message':'User don\'t exist',
-                'status':status.HTTP_200_OK,
+                'status':status.HTTP_404_NOT_FOUND,
                 'logged_in':False
             })
 
@@ -226,38 +226,40 @@ class RequestPasswordChangeView(APIView):
 
     def post(self,request):
         email=request.data.get('email')
+        otp=OTP()
         try:
             user=User.objects.get(email=email)
-
-            try:
-                security=Security.objects.get(user=user)
-                generate_token=generateidentifier(20)
+            try: 
+                raw_otp=otp.objects.filter(user).first()
                 
-                token=make_password(generate_token)
-                security.token=generate_token
-                security.save()
-                data={'token':token,
-                      'data':SecuritySerializer(security,many=False).data,
-                      'url':f'{requestUrl(request)}/auth/password/verify?q={generate_token}'
+                data={'data':UserSerializer(user,many=False).data,
+                    'otp':raw_otp,
+                    'message':'An OTP have been sent to this mail please check your mail, you can only request for another after 60 seconds'
+                    #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
                       }
+               
             except ObjectDoesNotExist:
-                security=Security.objects.create(user=user)
-                security.refresh_from_db()
-                generate_token=generateidentifier(20)
+                raw_otp=otp.create_otp(user,
+                                       duration='seconds',
+                                       value=60)   
                 
-                token=make_password(generate_token)
-                security.token=generate_token
-                security.save()
-
-                data={'token':generate_token,
-                      'data':SecuritySerializer(security,many=False).data,
-                      'url':f'{requestUrl(request)}/auth/password/verify?q={generate_token}'
+                data={
+                    'data':UserSerializer(user,many=False).data,
+                    'otp':raw_otp,
+                    'message':'Password request successful, check your mail'
+                    #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
                       }
 
 
             message = """<p>Hi there!, <br> <br>You have requested to change your password. <br> <br>
-            <b>Use """ + generate_token + """ as your verification code</b></p>"""
+            <b>Use """ + raw_otp + """ as your verification code</b></p>"""
             subject = 'Password Change Request'
+            send_user_message(
+                    "Your OTP Code",
+                    f"Your OTP code is {raw_otp}. It will expire in 60 seconds.",
+                    user
+                )
+               
             # sendmail([user.email],message,message,subject)
             return Response(data,status=status.HTTP_202_ACCEPTED)
             
@@ -272,21 +274,54 @@ class RequestPasswordChangeView(APIView):
 class VerifyPasswordRequestChangeView(APIView):
     permission_classes=[AllowAny]
     serializer_class=SecuritySerializer
-    def post(self,request):
-        q=str(request.GET.get('q')).strip()
-       
-
+    def get(self,request):
         try:
-            security=Security.objects.get(token=q)
-            now=timezone.now()
-            print(now)
-            security_time=security.date_created
-            print((now-security_time).seconds)
+            user=User.objects.get(email=str(request.data.get('email')).strip().copy())
+
+            token=str(request.data.get('otp')).strip()
+            otp=OTP.objects.filter(user=user)
+            if otp.exists():
+                otp=otp.first()
+                if otp.otp_hash == hash_otp(token):
+                    if otp.is_expired():
+                        return Response ({'is_valid':True,'expired':True},status=status.HTTP_406_NOT_ACCEPTABLE)
+                    
+                    return Response({'is_valid':True,'expired':False,'data':UserSerializer(user,many=False).data,},
+                                    status=status.HTTP_202_ACCEPTED)
+                else:
+                    return Response({
+                         'is_valid':False,
+                         'message':'invalid OTP'
+
+                    }, status=status.HTTP_406_NOT_ACCEPTABLE)
+            else:
+                return Response({
+                    'message':'no OTP assigned to user'
+                },status=status.HTTP_404_NOT_FOUND)
+
             
-            if ((now-security_time).seconds < 60):
-                new_password=request.data.get('new_password')
-                security.user.set_password(new_password)
-                security.user.save()
+        except ObjectDoesNotExist:
+            return Response({
+                'data':{},
+                'message':'Incorrect User email',
+
+            },status=status.HTTP_404_NOT_FOUND)
+        
+
+        
+
+    def post(self,request):
+        email=str(request.GET.get('email')).strip().copy()
+        password1=str(request.data.get('password1')).strip()
+        password2=str(request.data.get('password2')).strip()
+       
+        try:
+            user=User.objects.get(email=email)
+            if password1 == password2:
+
+                user.set_password(password1)
+                user.save()
+            
 
                 return Response({
                     'message':'Password Change Successfully',
@@ -295,10 +330,11 @@ class VerifyPasswordRequestChangeView(APIView):
                 })
             else:
                 return Response({
-                    'message':'this link has elasped it\'s duration',
-                    'status':status.HTTP_200_OK,
+                'message':'Password don\'t corresponds',
+                    'status':status.HTTP_406_NOT_ACCEPTABLE,
                     'verified':False
-                })
+            })
+            
         except ObjectDoesNotExist:
             return Response({
                 'verified': False,
@@ -307,6 +343,12 @@ class VerifyPasswordRequestChangeView(APIView):
             })
 
         
+        
+class EnableTwoFactorAuthentication(APIView):
+    def get(self,request):
+        objects=getUserData(request=request)
+        user=User.objects.get(email=objects['user']['email'])
+
         
 
         
