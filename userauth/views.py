@@ -81,10 +81,12 @@ class SignupView(APIView):
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
         if not email:
-            return Response({'message': 'Email is required', 'status': 'error'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Email is required', 'status': 'error','status':status.HTTP_400_BAD_REQUEST},
+                             status=status.HTTP_400_BAD_REQUEST)
         # Check if user already exists
         if User.objects.filter(email=email).exists():
-            return Response({'message': 'User already exists', 'email_exist': True}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'User already exists', 'email_exist': True,'status':status.HTTP_400_BAD_REQUEST},
+                             status=status.HTTP_400_BAD_REQUEST)
         # Serialize and validate user data
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -118,7 +120,7 @@ class VerifyOTPView(APIView):
         otp = request.data.get("otp")
         email = request.data.get("email")
         if not otp or not email:
-            return Response({"message": "OTP and email are required", "status": False}, status=400)
+            return Response({"message": "OTP and email are required", "status": False}, status=status.HTTP_406_NOT_ACCEPTABLE)
         try:
             user = User.objects.get(email=email)
             hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
