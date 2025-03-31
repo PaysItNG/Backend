@@ -85,29 +85,33 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
-class OTP(models.Model):
+class  OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otps")
     otp_hash = models.CharField(max_length=64, unique=True)  # Store hashed OTP
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
 
+    class Meta:
+        ordering=['-created_at']
+
     def is_expired(self):
         """Check if OTP is expired"""
         return timezone.now() > self.expires_at
 
-    def create_otp(self,user,duration='minutes',value=5):
+    def create_otp(self,user,duration):
         """Generate and save an OTP for a user"""
         raw_otp = generate_otp(6)
         hashed_otp = hash_otp(raw_otp)
-        expiration_time = timezone.now() + datetime.timedelta(duration=value)  # Set expiry time
 
-        otp_instance = self.objects.create(
+        otp_instance = OTP.objects.create(
             user=user,
             otp_hash=hashed_otp,
-            expires_at=expiration_time
+            expires_at= timezone.now() + datetime.timedelta(seconds=duration)
         )
 
         return raw_otp  # Return raw OTP for sending via email/SMS
+    def remove_otp_with_due_range(self,duration):
+        return (self.created_at + datetime.timedelta(seconds=duration)) == self.expires_at
     
     
 
@@ -194,15 +198,16 @@ class Security(models.Model):
     two_factor_auth_enabled = models.BooleanField(default=False)
     
     login_attempt_count = models.IntegerField(default=0)
-    date_created=models.DateTimeField()
+    date_created=models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'security'
 
 
     def save(self,*args,**kwargs):
+        pass
        
-        self.date_created=timezone.now()
+        # self.date_created=timezone.now()
 
         super().save(*args,**kwargs)
 
