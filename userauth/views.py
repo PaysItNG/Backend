@@ -258,15 +258,14 @@ class RequestVerifyPasswordChangeView(APIView):
                             with current OTP and delete them
                             """
                             for otp in list(otps)[0:len(otps)]: otp.delete()
-                            # Create and assing otp
+                            # Create and assign otp
                             raw_otp=otp.create_otp(user,duration=60)
 
                             """
                             Email sender
                             """ 
                             data={
-                                'data':UserSerializer(user,many=False).data,
-                                'otp':raw_otp,
+                                'data':UserSerializer(user,many=False).data,'otp':raw_otp,
                                 'message':'Password request successful, check your mail'
                                 #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
                                 }      
@@ -335,7 +334,7 @@ class RequestVerifyPasswordChangeView(APIView):
             duration=self.duration
             if otp.exists():
                 otp=otp.first()
-                if otp.remove_otp_with_due_range(duration=duration):
+                if otp.remove_otp_with_due_range(duration=60):
                      return Response({
                             'is_valid':False,
                             'message':'invalid OTP Request'
@@ -409,10 +408,7 @@ class EnableTwoFactorAuthentication(APIView):
             """
             otps=OTP.objects.filter(user=user)
             
-            if otps.exists():
-                print(otps)
-        
-             
+            if otps.exists(): 
                 otps= list(filter(lambda x : x.remove_otp_with_due_range(duration=40) == True,otps))
                 
                 if len(otps) > 0:    
@@ -455,8 +451,6 @@ class EnableTwoFactorAuthentication(APIView):
                             'otp':raw_otp,
                             'data':objects
                         },status=status.HTTP_200_OK)
-                
-                    
 
             else:
                 raw_otp=otp.create_otp(user=user,duration=40)

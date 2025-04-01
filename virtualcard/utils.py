@@ -14,6 +14,12 @@ headers={
 
     }
 class StripePaymentUtils():
+
+
+
+    def get_paysit_stripe_balance():
+        res=stripe.Balance.retrieve()
+        return res
     
 
     @staticmethod
