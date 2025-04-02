@@ -155,7 +155,17 @@ class CardHolderRetrieveView(APIView):
       
 
 class AddFundToStripeCard(APIView):
-   pass
+   permission_classes=[IsAuthenticated]
+   authentication_classes=[JWTAuthentication]
+   def post(self,request):
+      res=StripePaymentUtils.get_paysit_stripe_balance()
+      return Response(res)
+
+   
+
+
+
+
 
 class PaymentWithStripeView(APIView):
    def post(self,request,*args,**kwargs):

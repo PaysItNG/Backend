@@ -88,16 +88,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 class  OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otps")
     otp_hash = models.CharField(max_length=64, unique=True)  # Store hashed OTP
+    # expiry_duration=models.IntegerField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(blank=True,null=True)
 
     class Meta:
         ordering=['-created_at']
+
+    
+    
 
     def is_expired(self):
         """Check if OTP is expired"""
         return timezone.now() > self.expires_at
 
+    
     def create_otp(self,user,duration):
         """Generate and save an OTP for a user"""
         raw_otp = generate_otp(6)
@@ -106,12 +111,20 @@ class  OTP(models.Model):
         otp_instance = OTP.objects.create(
             user=user,
             otp_hash=hashed_otp,
-            expires_at= timezone.now() + datetime.timedelta(seconds=duration)
+            expires_at=timezone.now()+datetime.timedelta(seconds=duration) 
         )
-
-        return raw_otp  # Return raw OTP for sending via email/SMS
+        
+        
+        return raw_otp,otp_instance  # Return raw OTP for sending via email/SMS
+    
     def remove_otp_with_due_range(self,duration):
         return (self.created_at + datetime.timedelta(seconds=duration)) == self.expires_at
+    
+
+
+    
+    
+    
     
     
 
@@ -130,6 +143,7 @@ class UserProfile(models.Model):
     referrals=models.ManyToManyField(User,related_name='referrals',blank=True)
     referee=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE,related_name='referee')
     referral_id=models.CharField(max_length=100,null=True,blank=True)
+    otp=models.OneToOneField(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='profile_otp')
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -196,7 +210,7 @@ class Security(models.Model):
     token=models.CharField(max_length=100,null=True,blank=True)
     locked = models.BooleanField(default=False)
     two_factor_auth_enabled = models.BooleanField(default=False)
-    
+    otp=models.OneToOneField(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='security_otp')
     login_attempt_count = models.IntegerField(default=0)
     date_created=models.DateTimeField(auto_now_add=True)
     
@@ -204,12 +218,7 @@ class Security(models.Model):
         db_table = 'security'
 
 
-    def save(self,*args,**kwargs):
-        pass
-       
-        # self.date_created=timezone.now()
-
-        super().save(*args,**kwargs)
+    
 
 
 
@@ -326,6 +335,7 @@ class Transaction(models.Model):
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
     paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
     paystack_ref=models.CharField(max_length=100,null=True,blank=True)
+    otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
