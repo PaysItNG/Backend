@@ -99,7 +99,9 @@ class SignupView(APIView):
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
 
-            # Send OTP via email
+            """
+            Email sender
+            """
             send_user_message(
                 "Your OTP Code",
                 f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
@@ -136,6 +138,10 @@ class VerifyOTPView(APIView):
                 otp.otp_hash=otp_hash,
                 otp.expires_at=timezone.now() + timezone.timedelta(minutes=5)
                 otp.save()
+
+                """
+                Email sender
+                """
                 send_user_message(
                         "Your OTP Code",
                         f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
@@ -221,47 +227,83 @@ def VerifySocialLogin(request):
     })
 
 
-class RequestPasswordChangeView(APIView):
+class RequestVerifyPasswordChangeView(APIView):
     
     permission_classes=[AllowAny]
     serializer_class=SecuritySerializer
+    duration=60
 
-    def post(self,request):
+    def get(self,request):
         email=request.data.get('email')
         otp=OTP()
+        raw_otp=''
+        duration=self.duration
         try:
+            
             user=User.objects.get(email=email)
-            try: 
-                raw_otp=otp.objects.filter(user).first()
+            
+            profile,_=UserProfile.objects.get_or_create(user=user)
+            #  Check if previous otp exists and expired
+        
+            if profile.otp is not None:
+                    
+                    # otps= list(filter(lambda x : x.remove_otp_with_due_range(duration=60) == True,otps))
+            
+                if  profile.otp.is_expired():
+                    
+                    """
+                        Get  or create user security status 
+                        check if assigned otp is expired, delete and reassign new one
+                        
+                        """
+                    profile.otp.delete()
+                    raw_otp,otp_instance=otp.create_otp(user=user,duration=duration)
+
+                    profile.otp=otp_instance
+                    profile.save()
+
+                    """
+                    Email sender
+                    """ 
+                    data={
+                        'data':UserSerializer(user,many=False).data,'otp':raw_otp,
+                        'message':'Password request successful, check your mail'
+                        #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
+                        }      
+                else:
+                    
+                    data={'data':UserSerializer(user,many=False).data,        
+                        'message':"""An OTP have been sent to this mail kindly check your mail,
+                        you can only request for another after 60 seconds""",
+                                                }
+            
+
+            else:
+
+                # Create and assing otp
                 
-                data={'data':UserSerializer(user,many=False).data,
-                    'otp':raw_otp,
-                    'message':'An OTP have been sent to this mail please check your mail, you can only request for another after 60 seconds'
-                    #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
-                      }
-               
-            except ObjectDoesNotExist:
-                raw_otp=otp.create_otp(user,
-                                       duration='seconds',
-                                       value=60)   
-                
+                raw_otp,otp_instance=otp.create_otp(user=user,duration=duration)
+                profile.otp=otp_instance
+                profile.save() 
+
                 data={
                     'data':UserSerializer(user,many=False).data,
                     'otp':raw_otp,
                     'message':'Password request successful, check your mail'
-                    #   'url':f'{requestUrl(request)}/auth/password/verify?q={raw_otp}'
-                      }
+                    }
 
-
-            message = """<p>Hi there!, <br> <br>You have requested to change your password. <br> <br>
-            <b>Use """ + raw_otp + """ as your verification code</b></p>"""
-            subject = 'Password Change Request'
-            send_user_message(
-                    "Your OTP Code",
-                    f"Your OTP code is {raw_otp}. It will expire in 60 seconds.",
-                    user
-                )
-               
+                """
+                Email sender
+                """
+                # message = """<p>Hi there!, <br> <br>You have requested to change your password. <br> <br>
+                # <b>Use """ + raw_otp + """ as your verification code</b></p>"""
+                # subject = 'Password Change Request'
+                send_user_message(
+                        "Your OTP Code",
+                        f"Your OTP code is {raw_otp}. It will expire in 60 seconds.",
+                        user
+                    )
+                
             # sendmail([user.email],message,message,subject)
             return Response(data,status=status.HTTP_202_ACCEPTED)
             
@@ -273,36 +315,48 @@ class RequestPasswordChangeView(APIView):
                 'user':False
             })
         
-class VerifyPasswordRequestChangeView(APIView):
-    permission_classes=[AllowAny]
-    serializer_class=SecuritySerializer
-    def get(self,request):
+    def post(self,request):
         try:
-            user=User.objects.get(email=str(request.data.get('email')).strip().copy())
+            user=User.objects.get(email=str(request.data.get('email')).strip())
 
             token=str(request.data.get('otp')).strip()
-            otp=OTP.objects.filter(user=user)
-            if otp.exists():
-                otp=otp.first()
-                if otp.otp_hash == hash_otp(token):
-                    if otp.is_expired():
-                        return Response ({'is_valid':True,'expired':True},status=status.HTTP_406_NOT_ACCEPTABLE)
-                    
-                    return Response({'is_valid':True,'expired':False,'data':UserSerializer(user,many=False).data,},
-                                    status=status.HTTP_202_ACCEPTED)
-                else:
-                    return Response({
-                         'is_valid':False,
-                         'message':'invalid OTP'
-
-                    }, status=status.HTTP_406_NOT_ACCEPTABLE)
-            else:
-                return Response({
-                    'message':'no OTP assigned to user'
-                },status=status.HTTP_404_NOT_FOUND)
-
+            password1=str(request.data.get('password1')).strip()
+            password2=str(request.data.get('password2')).strip()
+            profile=UserProfile.objects.get(user=user)
+            duration=self.duration
+           
+                
+            if profile.otp.otp_hash == hash_otp(token):
+                if profile.otp.is_expired():
+                    return Response ({'is_valid':True,'expired':True},status=status.HTTP_406_NOT_ACCEPTABLE)
             
-        except ObjectDoesNotExist:
+                else:
+                    
+                    if password1 == password2:
+
+                        user.set_password(password1)
+                        user.save()
+                        profile.otp.delete()
+                        return Response({
+                            'message':'Password Change Successfully',
+                            'verified':True,'is_valid':True,'expired':False,
+                            'data':UserSerializer(user).data
+                        },status=status.HTTP_202_ACCEPTED)
+                    else:
+                        return Response({
+                        'message':'Password don\'t corresponds',
+                            'status':status.HTTP_406_NOT_ACCEPTABLE,
+                            'verified':False
+                    })
+                    
+            else:
+                        return Response({
+                            'is_valid':False,
+                            'message':'invalid OTP'
+
+                        }, status=status.HTTP_406_NOT_ACCEPTABLE)
+            
+        except User.DoesNotExist:
             return Response({
                 'data':{},
                 'message':'Incorrect User email',
@@ -312,46 +366,126 @@ class VerifyPasswordRequestChangeView(APIView):
 
         
 
-    def post(self,request):
-        email=str(request.GET.get('email')).strip().copy()
-        password1=str(request.data.get('password1')).strip()
-        password2=str(request.data.get('password2')).strip()
-       
-        try:
-            user=User.objects.get(email=email)
-            if password1 == password2:
-
-                user.set_password(password1)
-                user.save()
-            
-
-                return Response({
-                    'message':'Password Change Successfully',
-                    'status':status.HTTP_200_OK,
-                    'verified':True
-                })
-            else:
-                return Response({
-                'message':'Password don\'t corresponds',
-                    'status':status.HTTP_406_NOT_ACCEPTABLE,
-                    'verified':False
-            })
-            
-        except ObjectDoesNotExist:
-            return Response({
-                'verified': False,
-                'message':'Not found',
-                'status':status.HTTP_404_NOT_FOUND
-            })
-
-        
+    
         
 class EnableTwoFactorAuthentication(APIView):
+    authentication_classes=[JWTAuthentication]
+    permission_classes=[IsAuthenticated]
+    duration=40
     def get(self,request):
         objects=getUserData(request=request)
         user=User.objects.get(email=objects['user']['email'])
+        duration=self.duration
+        otp=OTP()
 
+        try:    
+            """
+            Get  or create user security status 
+            check if assigned otp is expired, delete and reassign new one
+            
+            """
+            security,_=Security.objects.get_or_create(user=user)
+            if security.otp is not None: 
+                    # otps= list(filter(lambda x : x.remove_otp_with_due_range(duration=40) == True,otps))     
+                if security.otp.is_expired():
+                    security.otp.delete()
+                    raw_otp,otp_instance=otp.create_otp(user=user,duration=duration)
+
+                    security.otp=otp_instance
+                    security.save()
+                    objects['security']=SecuritySerializer(security).data
+
+                    """
+                    Email sender
+                    """
+
+                    return Response({
+                        'success':True,
+                        'message':f'An OTP was sent to your mail to validate to Two-Factor Authentication request which expires {str(duration)} seconds',
+                        'otp':raw_otp,
+                        'data':objects
+                    },status=status.HTTP_200_OK)
+
+            
+                else:
+                    
+                    return Response({
+                        'success':True,
+                        'message':f"""An OTP was sent to this mail kindly check your mail,
+                            you can only request for another after {str(duration)} seconds""",
+                        'data':objects,
+
+                    },status=status.HTTP_200_OK)
+     
+            else:
+                raw_otp,otp_instance=otp.create_otp(user=user,duration=duration)
+                security.otp=otp_instance
+                security.save()
+
+                """
+                Email sender
+                """
+                return Response({
+                        'success':True,
+                        'message':f' OTP  sent to your mail to validate to Two-Factor Authentication request which expires {str(duration)} seconds',
+                        'otp':raw_otp,
+                        'data':objects
+                    },status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'message':f'An error occured {e}',
+                'data':{},
+                'success':False
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
         
+
+
+    def post(self,request):
+        otp=str(request.data.get('otp')).strip()
+        duration=self.duration
+
+        # otps=[obj for obj in OTP.objects.filter(user=request.user) if obj.remove_otp_with_due_range(duration=40)==True]
+        try:
+            security=Security.objects.get(user=request.user)
+
+            if security.otp is not None:
+
+                if security.otp.is_expired():
+                    return Response ({'is_valid':True,'expired':True,
+                                    'message':'This OTP  is expired',
+                                    },status=status.HTTP_406_NOT_ACCEPTABLE)
+                else:
+                    if security.otp.otp_hash == hash_otp(otp):
+                        
+                        security.two_factor_auth_enabled=True
+                        security.otp.delete()
+                        security.save()
+
+                       
+
+                        return Response ({'is_valid':True,'expired':False,
+                                    'message':'2FA enabled',
+                                    },status=status.HTTP_200_OK)
+                    else:
+                        return Response ({'is_valid':False,
+                                    'message':'Invalid OTP',
+                                    },status=status.HTTP_200_OK)
+            else:
+                pass
+
+        except Exception as e:
+            return Response({
+                'message':f'An error occured {e}',
+                'data':{},
+                'success':False
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
 
         
 class KycVerificationView(APIView):
@@ -368,10 +502,7 @@ class KycVerificationView(APIView):
             ).data
 
             data['kyc']=kyc_data
-            return Response({
-                'data':data,
-                'status':status.HTTP_200_OK
-            })
+            return Response({'data':data,'status':status.HTTP_200_OK })
         except:
             return Response({
                 'data':[],

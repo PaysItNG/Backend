@@ -88,8 +88,8 @@ class CreateVirtualCardView(APIView):
                return Response({
                   'message':'Card already issued to user',
                   'data':Cardserializer(card).data,
-                  'status':'ok',
-               })
+                  
+               },status=status.HTTP_200_OK)
             
 
 
@@ -98,12 +98,11 @@ class CreateVirtualCardView(APIView):
               res=StripePaymentUtils.create_card_holder(data=data)
   
               return Response({
-                  'status':'ok',
                   'data':res,
                   'message':'card successfully issued'
                   
 
-                })
+                },status=status.HTTP_201_CREATED)
 
 class UpdateCardholderView(APIView):
    permission_classes=[IsAuthenticated]
@@ -116,17 +115,17 @@ class UpdateCardholderView(APIView):
             return Response({
                'data':res,
                'message':'User card updated'
-            })
+            },status=status.HTTP_201_CREATED)
          else:
             return Response({
                'data':{},
                'message':'User card is not issued'
-            })
+            },status=status.HTTP_400_BAD_REQUEST)
       except ObjectDoesNotExist:
          return Response({
             'data':{},
             'message':'No card data found'
-         }) 
+         },status=status.HTTP_404_NOT_FOUND) 
       
 
 
@@ -142,17 +141,31 @@ class CardHolderRetrieveView(APIView):
             return Response({
                'data':res,
                'message':'User card retieved'
-            })
+            },status=status.HTTP_200_OK)
          else:
             return Response({
                'data':{},
                'message':'User card is not issued'
-            })
+            },status=status.HTTP_404_NOT_FOUND)
       except ObjectDoesNotExist:
          return Response({
             'data':{},
             'message':'No card data found'
-         }) 
+         },status=status.HTTP_404_NOT_FOUND) 
+      
+
+class AddFundToStripeCard(APIView):
+   permission_classes=[IsAuthenticated]
+   authentication_classes=[JWTAuthentication]
+   def post(self,request):
+      res=StripePaymentUtils.get_paysit_stripe_balance()
+      return Response(res)
+
+   
+
+
+
+
 
 class PaymentWithStripeView(APIView):
    def post(self,request,*args,**kwargs):
