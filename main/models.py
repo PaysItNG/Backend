@@ -183,7 +183,7 @@ class KYCVerification(models.Model):
 
     def save(self,*args,**kwargs):
 
-        if self.status == 'verified' or 'rejected':
+        if self.status in ['verified','rejected']:
             self.reviewed_at=timezone.now()
         else:
             self.reviewed_at=None
