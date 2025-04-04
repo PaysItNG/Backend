@@ -64,8 +64,7 @@ class CreateVirtualCardView(APIView):
             ip_addr=get_user_ip(request=request)
             card,created=Card.objects.get_or_create(user=request.user)
 
-
-        
+ 
             data = {
             "type": "individual",
             "name": f"{request.user.first_name} {request.user.last_name}",
@@ -79,20 +78,20 @@ class CreateVirtualCardView(APIView):
             "individual[first_name]":request.user.first_name,
             "individual[last_name]":request.user.last_name,
             "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-            "individual[card_issuing][user_terms_acceptance][ip]":ip_addr
+            "individual[card_issuing][user_terms_acceptance][ip]":'156.22.55.115',
+            "spending_controls[allowed_categories][0]":"general_services",
+            "spending_controls[spending_limits][0][amount]":10000,
+            "spending_controls[spending_limits][0][interval]":'daily',
+            "spending_controls[spending_limits_currency]":'USD',
+            "spending_controls[blocked_merchant_countries]":[],
+            
 
 
         }
             
             if card.issued == True:
-               return Response({
-                  'message':'Card already issued to user',
-                  'data':Cardserializer(card).data,
-                  
-               },status=status.HTTP_200_OK)
+               return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
             
-
-
             else:
 
               res=StripePaymentUtils.create_card_holder(data=data)
@@ -103,6 +102,9 @@ class CreateVirtualCardView(APIView):
                   
 
                 },status=status.HTTP_201_CREATED)
+
+
+
 
 class UpdateCardholderView(APIView):
    permission_classes=[IsAuthenticated]
@@ -154,9 +156,14 @@ class CardHolderRetrieveView(APIView):
          },status=status.HTTP_404_NOT_FOUND) 
       
 
+
+
 class AddFundToStripeCard(APIView):
    permission_classes=[IsAuthenticated]
    authentication_classes=[JWTAuthentication]
+
+   def get(self,request):
+      pass
    def post(self,request):
       res=StripePaymentUtils.get_paysit_stripe_balance()
       return Response(res)
@@ -235,8 +242,6 @@ def virtualcard_webhook_view(request):
   payload = request.body
   event = None
 
-  
-#   print(payload)
   try:
     event = stripe.Event.construct_from(json.loads(payload), settings.STRIPE_SECRET_KEY)
   except ValueError as e:
@@ -247,19 +252,22 @@ def virtualcard_webhook_view(request):
 
   data={
         'id':event['data']['object']['id'],
+        'spending_controls':event['data']['object']['spending_controls']
         
         }
-  print(event.type)
+#   print()
   
   user_email=event['data']['object']['email']
-  print(user_email)
+#   print(user_email)
 
   
   if event.type == 'issuing_cardholder.created':
     
     StripePaymentUtils.create_card(data=data,email=user_email)
-#   elif event.type == 'issuing_cardholder.updated':
-#     StripePaymentUtils.update_card(data=data) 
+
+  if event.type == 'issuing_cardholder.updated':
+     StripePaymentUtils.update_card(data=data,email=user_email)
+
   else:
     print('Unhandled event type {}'.format(event.type))
 
@@ -296,3 +304,38 @@ def payment_webhook_view(request):
       print('Unhandled event type {}'.format(event.type))
 
    return HttpResponse(status=200)
+
+
+
+
+@csrf_exempt
+def card_authorization_webhook(request): #Handles all card authorization events when a purchase is made with the card
+    payload = request.body
+    event = None
+    
+
+
+    try:
+      event = stripe.Event.construct_from(
+         json.loads(payload), stripe.api_key
+      )
+    except ValueError as e:
+      # Invalid payload
+      return HttpResponse(status=400)
+    print(event)
+
+   #  # Handle virtual card transaction
+   #  if event['type'] == 'issuing_transaction.created':
+   #      transaction = event['data']['object']
+   #      card_id = transaction['card']
+   #      amount = transaction['amount'] / 100  # Stripe uses cents
+   #      currency = transaction['currency']
+
+   #      # Find user with this virtual card
+   #      try:
+   #          profile = UserProfile.objects.get(virtual_card_id=card_id)
+            
+   #      except UserProfile.DoesNotExist:
+   #          pass
+
+   #  return HttpResponse(status=200)
