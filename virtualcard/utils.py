@@ -142,3 +142,8 @@ class StripePaymentUtils():
             )
         
         return res
+    
+    def approve_authorization(data):
+        res=stripe.issuing.Authorization.approve(
+            
+        )

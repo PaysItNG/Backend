@@ -290,7 +290,7 @@ def payment_webhook_view(request):
       return HttpResponse(status=400)
 
    # Handle the event
-   print(event)
+   # print(event)
    if event.type == 'payment_intent.succeeded':
       payment_intent = event.data.object # contains a stripe.PaymentIntent
       # Then define and call a method to handle the successful payment intent.
@@ -322,20 +322,22 @@ def card_authorization_webhook(request): #Handles all card authorization events 
     except ValueError as e:
       # Invalid payload
       return HttpResponse(status=400)
-    print(event)
+   #  print('AUTHORIZATION ',event)
 
-   #  # Handle virtual card transaction
-   #  if event['type'] == 'issuing_transaction.created':
-   #      transaction = event['data']['object']
-   #      card_id = transaction['card']
-   #      amount = transaction['amount'] / 100  # Stripe uses cents
-   #      currency = transaction['currency']
+    # Handle virtual card transaction
+    if event['type'] == 'issuing_transaction.created':
+       
+        transaction = event['data']['object']
+        card_id = transaction['card']
+        amount = transaction['amount'] / 100  # Stripe uses cents
+        currency = transaction['currency']
+        print('ID  ',event['data'])
 
-   #      # Find user with this virtual card
-   #      try:
-   #          profile = UserProfile.objects.get(virtual_card_id=card_id)
+      #   # Find user with this virtual card
+      #   try:
+      #       profile = UserProfile.objects.get(virtual_card_id=card_id)
             
-   #      except UserProfile.DoesNotExist:
-   #          pass
+      #   except UserProfile.DoesNotExist:
+      #       pass
 
-   #  return HttpResponse(status=200)
+    return HttpResponse(status=200)
