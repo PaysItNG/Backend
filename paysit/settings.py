@@ -22,6 +22,18 @@ import environ
 env = environ.Env()
 environ.Env.read_env()
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import cloudinary_storage
+
+
+cloudinary.config(
+    cloud_name='ded3ejyc1',
+    api_key='767488432441825',
+    api_secret='alDZdJ_w_UWNOOZrwWpMl74tFNk'
+)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -46,6 +58,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
      "corsheaders",
+     "cloudinary",
 
     'main',
     'userauth',
@@ -268,3 +281,11 @@ if not DEBUG:
 # ]
 MEDIA_URL = '/media/'
 MEDIA_ROOT=os.path.join(BASE_DIR,'static/media')
+
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME':'ded3ejyc1',
+    'API_KEY':'767488432441825',
+    'API_SECRET':'alDZdJ_w_UWNOOZrwWpMl74tFNk'
+}

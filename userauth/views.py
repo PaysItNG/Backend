@@ -30,6 +30,7 @@ import random
 from django.utils import timezone
 from .signals import send_user_message
 from payment.utils import PayStackUtils
+from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,JSONParser
 
 logger=logging.getLogger(__file__)
 PaysTack =PayStackUtils()
@@ -492,6 +493,7 @@ class KycVerificationView(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[IsAuthenticated]
     serializer_class=KYCVerificationSerializer
+    parser_classes=[MultiPartParser,FormParser]
 
     def get(self,*args,**kwargs):
         data=getUserData(self.request)
@@ -512,6 +514,7 @@ class KycVerificationView(APIView):
 
     def put(self,*args,**kwargs):
         serializer=KYCVerificationSerializer(data=self.request.data)
+        
 
         if serializer.is_valid():
             serialized_data=serializer.save(

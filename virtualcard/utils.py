@@ -36,10 +36,15 @@ class StripePaymentUtils():
 
     @staticmethod
     def update_card_holder(data)->dict:
-        stripe.issuing.Cardholder.modify(
+        res=stripe.issuing.Cardholder.modify(
             data.card_holder_ref_id,
+            spending_controls={
+                "allowed_categories": ["general_services"],  # Allows all categories
+            },
             metadata={"order_id": "6735"},
             )
+        
+        return res
 
 
     @staticmethod
@@ -58,7 +63,7 @@ class StripePaymentUtils():
         """
 
         url=f"{base_url}/v1/issuing/cards"
-        card,created=Card.objects.get_or_create(user__email=email)
+        card,_=Card.objects.get_or_create(user__email=email)
 
 
         card_data={}
@@ -66,10 +71,14 @@ class StripePaymentUtils():
         card_data['currency']='usd'
         card_data['status']='active'
         card_data['type']='virtual'
+        # card_data["spending_controls"]["allowed_categories"][0]="advertising_services"
+      
+
      
         res=requests.post(url=url,headers=headers,data=card_data)
-        # print('Card ',res.json())
+        print('Card ',res.json())
         response=res.json()
+
         
         card.card_holder_ref_id=str(data['id']).strip()
         card.card_ref_id=str(response['id']).strip()
@@ -87,11 +96,19 @@ class StripePaymentUtils():
         return response
     
     @staticmethod
-    def update_card(data):
-        stripe.issuing.Card.modify(
-        data['id'],
+    def update_card(data,email):
+        card,_=Card.objects.get_or_create(user__email=email)
+        print(data)
+        res=stripe.issuing.Card.modify(
+        card.card_ref_id,
         metadata={"order_id": "6735"},
+        spending_controls={
+            'allowed_categories':data['spending_controls']['allowed_categories']
+        }
         )
+
+        print(res)
+        return res
 
     @staticmethod
     def create_payment_intent(data):
@@ -100,7 +117,33 @@ class StripePaymentUtils():
         res = stripe.PaymentIntent.create(
             amount=data['amount'],
             currency=data['currency'],
-            payment_method_types=["card"],  # ✅ Correct (array)
+            payment_method_types=["card"],  # Correct (array)
         )
 
         return res
+    
+
+    #to be refactored
+    def confirm_payment_intent(data):
+        res=stripe.PaymentIntent.confirm(
+                    "pi_3MtweELkdIwHu7ix0Dt0gF2H", #PAYMENT INTENT ID
+                    payment_method="pm_card_visa",
+                    return_url=" ",
+                    )
+
+        return res
+    
+
+
+    def update_card_authorization(data):
+        res=stripe.issuing.Authorization.modify(
+            "iauth_1JVXl82eZvKYlo2CPIiWlzrn",
+            metadata={"order_id": "6735"},
+            )
+        
+        return res
+    
+    def approve_authorization(data):
+        res=stripe.issuing.Authorization.approve(
+            
+        )

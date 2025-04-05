@@ -13,6 +13,8 @@ import string
 import json
 import hashlib
 # Create your models here.
+from cloudinary.models import CloudinaryField
+
 
 def generateinviteID(length) ->str:
     val=''
@@ -171,8 +173,8 @@ class KYCVerification(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
-    id_document =  models.URLField( blank=True, null=True,max_length=5000)
-    selfie = models.URLField(max_length=5000, blank=True, null=True)
+    id_document =  CloudinaryField('id_document',null=True,blank=True, )
+    selfie = CloudinaryField('selfie',null=True,blank=True, )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES,blank=True, null=True)
     submitted=models.BooleanField(default=False)
     submitted_at = models.DateTimeField(default='', blank=True,null=True)
@@ -183,7 +185,7 @@ class KYCVerification(models.Model):
 
     def save(self,*args,**kwargs):
 
-        if self.status == 'verified' or 'rejected':
+        if self.status in ['verified','rejected']:
             self.reviewed_at=timezone.now()
         else:
             self.reviewed_at=None
