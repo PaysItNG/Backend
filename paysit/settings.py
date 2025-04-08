@@ -251,8 +251,10 @@ PSTACK_PUB_KEY=env('Pstack_test_public_key')
 PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
 STRIPE_PUB_KEY=env('Stripe_test_public_key')
 STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
+STRIPE_WEBHHOOK_SECRET=env('Stripe_webhook_secret')
 MARQETA_API_KEY=env('Marqueta_api_key')
 ADMIN_ACCESS_TOKEN=env('Admin_access_token')
+
 
 CORS_ALLOWED_ORIGINS = [
     # "https://backend-hr0w.onrender.com",

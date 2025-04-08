@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import APIendpoints
+from .views import *
 urlpatterns = [
-    path("",APIendpoints)
+    path("",APIendpoints),
+    path('profile/',UserProfileDataView.as_view(),name='profile')
 ]

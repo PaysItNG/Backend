@@ -33,13 +33,17 @@ import string
 import random
 from django.utils import timezone
 import stripe
-
+from rest_framework.decorators import api_view
 from virtualcard.utils import *
 import base64
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.http import JsonResponse, HttpResponse
+from decimal import Decimal
 
 stripe.api_key=settings.STRIPE_SECRET_KEY
 
-
+webhook_secret=settings.STRIPE_WEBHHOOK_SECRET
 
 def get_user_ip(request):
     ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -78,12 +82,14 @@ class CreateVirtualCardView(APIView):
             "individual[first_name]":request.user.first_name,
             "individual[last_name]":request.user.last_name,
             "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-            "individual[card_issuing][user_terms_acceptance][ip]":'156.22.55.115',
-            "spending_controls[allowed_categories][0]":"general_services",
-            "spending_controls[spending_limits][0][amount]":10000,
+            "individual[card_issuing][user_terms_acceptance][ip]":get_user_ip(request=request),
+            "spending_controls[allowed_categories]" :None,
+            "spending_controls[spending_limits][0][amount]":100000,
             "spending_controls[spending_limits][0][interval]":'daily',
             "spending_controls[spending_limits_currency]":'USD',
-            "spending_controls[blocked_merchant_countries]":[],
+            "spending_controls[blocked_merchant_countries][0]":[],
+            "spending_controls[allowed_categories][0]":['general_services'],
+             "spending_controls[allowed_categories][1]":['advertising_services'],
             
 
 
@@ -158,16 +164,63 @@ class CardHolderRetrieveView(APIView):
 
 
 
-class AddFundToStripeCard(APIView):
+class AddFundToDollarCard(APIView):
    permission_classes=[IsAuthenticated]
    authentication_classes=[JWTAuthentication]
 
    def get(self,request):
-      pass
-   def post(self,request):
-      res=StripePaymentUtils.get_paysit_stripe_balance()
-      return Response(res)
+      from_currency=str(request.data.get('from_currency')).strip()
+      to_currency=str(request.data.get('to_currency')).strip()
+      amount=Decimal(request.data.get('amount'))
 
+      currency=StripePaymentUtils.exchange_conversion(to_curr=to_currency,
+                                                      from_curr=from_currency,
+                                                      amount=amount)
+      
+      if currency['success'] == True:
+         return Response({
+            'amount':f"{currency['result']:.2f}",'data':currency['query'],
+            'meta_data':currency
+         },status=status.HTTP_200_OK)
+      
+      else:
+         return Response({
+            'data':{}
+         },status=status.HTTP_403_FORBIDDEN)
+      
+
+   def post(self,request):
+      from_currency=str(request.data.get('from_currency')).strip()
+      to_currency=str(request.data.get('to_currency')).strip()
+      amount=round(Decimal(request.data.get('amount')),2)
+      converted_amount=round(Decimal(request.data.get('converted_amount')),2)
+      res=StripePaymentUtils.get_paysit_stripe_balance()
+      issuing_balance=res['issuing']['available'][0].to_dict()
+      
+      if converted_amount < round(issuing_balance['amount']/100,2):
+         card,_=Card.objects.get_or_create(user=request.user)
+
+         if card.issued:
+            if amount <= Wallet.objects.get(user=request.user).balance:
+               card.balance+=converted_amount
+               card.save()
+               return Response({'message':'Card successfully funded','data':Cardserializer(card).data,
+                                'success':True}, status=status.HTTP_200_OK)
+            else:
+               return Response({'message':'Insuffient funds','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+         else:
+            
+            return Response({'message':'Card is not issued,contact support','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+         
+
+      return Response({'message':'Can\'t fund account at this time, contact support for futher assistance','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+      
+
+
+ 
    
 
 
@@ -307,37 +360,55 @@ def payment_webhook_view(request):
 
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class CardAuthorizationWebhook(View): #Handles all card authorization events when a purchase is made with the card
 
-@csrf_exempt
-def card_authorization_webhook(request): #Handles all card authorization events when a purchase is made with the card
-    payload = request.body
-    event = None
-    
+   
+   def post(self,request,*args,**kwargs):
+      payload = request.body
+      signature = request.headers.get("Stripe-Signature")
 
-
-    try:
-      event = stripe.Event.construct_from(
-         json.loads(payload), stripe.api_key
-      )
-    except ValueError as e:
+      try:
+         event = stripe.Webhook.construct_event(payload=request.body, sig_header=signature, secret=webhook_secret)
+      except ValueError as e:
       # Invalid payload
-      return HttpResponse(status=400)
-   #  print('AUTHORIZATION ',event)
+         return HttpResponse(status=400)
 
-    # Handle virtual card transaction
-    if event['type'] == 'issuing_transaction.created':
-       
-        transaction = event['data']['object']
-        card_id = transaction['card']
-        amount = transaction['amount'] / 100  # Stripe uses cents
-        currency = transaction['currency']
-        print('ID  ',event['data'])
+      except stripe.error.SignatureVerificationError as e:
+      # Invalid signature
+         return HttpResponse(status=400)
 
-      #   # Find user with this virtual card
-      #   try:
-      #       profile = UserProfile.objects.get(virtual_card_id=card_id)
-            
-      #   except UserProfile.DoesNotExist:
-      #       pass
+      print('AUTHORIZATION ',event['data'])
 
-    return HttpResponse(status=200)
+      # Handle virtual card transaction
+      if event['type'] == 'issuing_authorization.request':
+         auth = event['data']['object']
+         card_id = auth['card']['id']
+         amount = auth['pending_request']['amount'] / 100  # Stripe uses cents
+         currency = str(auth['currency']).lower()
+         print('ID inside request ',auth['pending_request'])
+
+         card=Card.objects.get(card_ref_id=card_id)
+         response_data={}
+
+         if amount <= card.balance:
+            response_data = {"approved": True}
+            card.balance=card.balance-Decimal(amount)
+            if currency =='usd':
+               card.currency = 'usd'
+            elif currency in ['eur','euro']:
+               card.currency = 'eur'
+            else:
+               pass
+
+            card.save()
+            # print('success')
+         else:
+            response_data = {"approved": False}
+            print('failed')
+         response = JsonResponse(response_data, status=200)
+         response["Stripe-Version"] = "2022-08-01"
+         return response
+      
+
+      return HttpResponse(status=200)
