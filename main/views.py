@@ -74,7 +74,7 @@ def APIendpoints(request):
 
              ['virtual-card/',
               ['create/','retrieve/cardholder/','update/cardholder', 'fund/payment/',
-               'ephemeral/keys/','payment/webhook/', "more/"],
+               'ephemeral/keys/','payment/webhook/', 'add/fund/','webhook/',"more/",'authorization/webhook/'],
              ],
 
            

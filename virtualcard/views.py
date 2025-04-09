@@ -164,7 +164,7 @@ class CardHolderRetrieveView(APIView):
 
 
 
-class AddFundToDollarCard(APIView):
+class SwapFundToDollarCard(APIView):
    permission_classes=[IsAuthenticated]
    authentication_classes=[JWTAuthentication]
 
@@ -227,24 +227,24 @@ class AddFundToDollarCard(APIView):
 
 
 
-class PaymentWithStripeView(APIView):
-   def post(self,request,*args,**kwargs):
-      amount=request.data.get('amount')
-      currency=request.data.get('currency')
+# class PaymentWithStripeView(APIView):
+#    def post(self,request,*args,**kwargs):
+#       amount=request.data.get('amount')
+#       currency=request.data.get('currency')
 
      
 
-      data={
-         'amount':amount,
-         'currency':currency,
-         "automatic_payment_methods[enabled]":False,
-         "payment_method_types": ["card"],
+#       data={
+#          'amount':amount,
+#          'currency':currency,
+#          "automatic_payment_methods[enabled]":False,
+#          "payment_method_types": ["card"],
        
 
-      }
-      res=StripePaymentUtils.create_payment_intent(data=data)
+#       }
+#       res=StripePaymentUtils.create_payment_intent(data=data)
 
-      return Response(res)
+#       return Response(res)
 
 
 
