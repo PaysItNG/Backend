@@ -47,6 +47,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model=UserProfile
         fields="__all__"
+        extra_kwargs={'user':{'read_only':True},
+                      'tier':{'read_only':True},
+                     }
 
 
 

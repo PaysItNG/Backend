@@ -139,7 +139,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     address = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-    utility_bill=CloudinaryField('utility_bill',null=True,blank=True, )
+    utility_bill=CloudinaryField('utility_bill',null=True,blank=True)
     bvn=models.CharField(max_length=100, blank=True, null=True)
     tier=models.CharField(max_length=100,null=True,blank=True, choices=Tiers,default='tier1')
     referrals=models.ManyToManyField(User,related_name='referrals',blank=True)
@@ -149,7 +149,7 @@ class UserProfile(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    profile_picture = CloudinaryField('profile_picture',null=True,blank=True, )
+    profile_picture = CloudinaryField('profile_picture',null=True,blank=True)
 
     def __str__(self):
         return f"Profile of {self.user.email}"

@@ -39,14 +39,14 @@ class UserProfileDataView(APIView):
         try:
             profile=UserProfile.objects.get(user=request.user)
 
-            serializer=UserProfileSerializer(profile,data=request.data)
+            serializer=self.serializer_class(profile,data=request.data)
 
             if serializer.is_valid():
-                serializer.save()
+                serialized_data=serializer.save()
 
                 return Response({
                     'message':'Profile successfully updated',
-                    'data':self.serializer_class(serializer).data
+                    'data':self.serializer_class(serialized_data).data
                 },status=status.HTTP_200_OK)
             
             else:

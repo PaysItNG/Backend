@@ -513,12 +513,13 @@ class KycVerificationView(APIView):
             })
 
     def put(self,*args,**kwargs):
-        serializer=KYCVerificationSerializer(data=self.request.data)
+        kyc=KYCVerification.objects.get(user=self.request.user)
+        serializer=KYCVerificationSerializer(kyc,data=self.request.data)
         
 
         if serializer.is_valid():
             serialized_data=serializer.save(
-                user=self.request.user,
+               
                 submitted_at=timezone.now(),
                 status='pending',
                 submitted=True
