@@ -514,7 +514,7 @@ class KycVerificationView(APIView):
 
     def put(self,*args,**kwargs):
         kyc=KYCVerification.objects.get(user=self.request.user)
-        serializer=KYCVerificationSerializer(kyc,data=self.request.data)
+        serializer=self.serializer_class(kyc,data=self.request.data)
         
 
         if serializer.is_valid():
@@ -526,7 +526,7 @@ class KycVerificationView(APIView):
             )
 
             return Response({
-                'data':KYCVerificationSerializer(serialized_data).data,
+                'data':self.serializer_class(serialized_data).data,
                 'status':'success',
                 'message':'Successfully sent'
             })
