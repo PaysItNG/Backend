@@ -529,6 +529,7 @@ class KycVerificationView(APIView):
                 'data':self.serializer_class(serialized_data).data,
                 'status':'success',
                 'message':'Successfully sent'
+                
             })
         else:
             return Response({
