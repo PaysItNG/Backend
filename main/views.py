@@ -87,6 +87,7 @@ def APIendpoints(request):
               
                  
              ],
+             ['profile/']
 
              
               
