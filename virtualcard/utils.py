@@ -72,20 +72,25 @@ class StripePaymentUtils():
 
         url=f"{base_url}/v1/issuing/cards"
         card,_=Card.objects.get_or_create(user__email=email)
-
-
-        card_data={}
-        card_data['cardholder']=data['id']
-        card_data['currency']='usd'
-        card_data['status']='active'
-        card_data['type']='virtual'
-        # card_data["spending_controls"]["allowed_categories"][0]="advertising_services"
-      
-
-     
-        res=requests.post(url=url,headers=headers,data=card_data)
-        print('Card ',res.json())
-        response=res.json()
+       
+        
+        res=stripe.issuing.Card.create(
+            cardholder=data['id'],
+            currency='usd',
+            status='active',
+            type='virtual',
+            spending_controls={
+                'spending_limits':[
+                    {
+                        'amount':100000,
+                        'interval':'daily',
+ 
+                    }
+                ],
+                'allowed_categories':data['spending_controls']['allowed_categories']
+            }
+        )
+        response=res
 
         
         card.card_holder_ref_id=str(data['id']).strip()
@@ -119,7 +124,7 @@ class StripePaymentUtils():
  
                     }
                 ],
-                'allowed_categories':['general_services','advertising_services']
+                'allowed_categories':data['spending_controls']['allowed_categories']
             
             },
         
@@ -166,7 +171,6 @@ class StripePaymentUtils():
             data['id']
         )
 
-        # print('RESPONSE ', res)
         return res
 
     def exchange_conversion(from_curr,to_curr,amount):
