@@ -80,7 +80,7 @@ class SignupView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get('email', '').strip().lower()
+        email = str(request.data.get('email', '')).strip().lower()
         if not email:
             return Response({'message': 'Email is required', 'status': 'error','status':status.HTTP_400_BAD_REQUEST},
                              status=status.HTTP_400_BAD_REQUEST)
@@ -110,6 +110,7 @@ class SignupView(APIView):
             )
             return Response({
                 'message': 'Signup successful. OTP sent to email.',
+                'otp':raw_otp,
                 'status': status.HTTP_200_OK,
                 'data': UserSerializer(user).data
             }, status=status.HTTP_200_OK)
@@ -520,8 +521,8 @@ class KycVerificationView(APIView):
         if serializer.is_valid():
             serialized_data=serializer.save(
                
-                submitted_at=timezone.now(),
-                status='pending',
+                # submitted_at=timezone.now(),
+                # status='pending',
                 submitted=True
             )
 

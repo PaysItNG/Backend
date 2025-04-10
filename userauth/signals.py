@@ -32,4 +32,4 @@ def CreateUserProfile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
         Wallet.objects.create(user=instance)
         Security.objects.create(user=instance)
-        KYCVerification.objects.create(user=instance)
+        KYCVerification.objects.create(user=instance,status='pending')
