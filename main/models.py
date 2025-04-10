@@ -177,8 +177,8 @@ class KYCVerification(models.Model):
     selfie = CloudinaryField('selfie',null=True,blank=True, )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES,blank=True, null=True)
     submitted=models.BooleanField(default=False)
-    submitted_at = models.DateTimeField(default='', blank=True,null=True)
     reviewed_at = models.DateTimeField(default='',blank=True,null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
 
     def __str__(self):
         return f"KYC Status for {self.user.email}: {self.status}"

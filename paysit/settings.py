@@ -77,8 +77,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    
     
     'whitenoise.middleware.WhiteNoiseMiddleware',
 
@@ -177,6 +178,7 @@ DATABASES = {
             'PORT': env('DB_PORT'),
         }
     }
+
 # DATABASES = {
 #         'default': {
 #             'ENGINE': 'django.db.backends.sqlite3',
