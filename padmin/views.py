@@ -102,7 +102,7 @@ class KycStatusView(APIView):
 
 
     @AllowedUsers(allowed_roles=['admin1','admin'])
-    def get(self,request,*args,**kwargs):
+    def post(self,request,*args,**kwargs):
         # FILTER BY STATUS AND  DURATIONS
         kyc_status=request.data.get('kyc_status','')
         seconds=int(request.data.get('s',0))
