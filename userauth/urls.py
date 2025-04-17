@@ -15,6 +15,6 @@ urlpatterns = [
     path('two-factor/enable/',EnableTwoFactorAuthentication.as_view(),name='enable_two_factor_authentication'),
     #  path('password/verify/',VerifyPasswordRequestChangeView.as_view(),name='password_verify'),
      path('kyc/apply/',KycVerificationView.as_view(),name='kyc_apply'),
-    path('kyc/status',KycStatusView.as_view(),name='kyc_status'),
-    path('kyc/approve/<str:id>',ApproveKycView.as_view(),name='kyc_approve'),
+    path('kyc/status/',KycStatusView.as_view(),name='kyc_status'),
+    path('kyc/approve/<str:id>/',ApproveKycView.as_view(),name='kyc_approve'),
 ]
