@@ -1,6 +1,24 @@
 import re
 import requests
 from django.conf import settings
+from datetime import datetime
+import string
+import random
+
+def generate_vtu_request_id(length):
+    char=string.ascii_lowercase+string.digits
+    random_id="".join(random.choice(char) for _ in range(length))
+    now=str(datetime.now())
+    val=''
+    for char in now:
+        if char in ['-',' ']:
+            continue
+        else:
+            val += char
+
+    token=val.split(':')[0]+val.split(':')[1]
+    request_id=token+random_id
+    return request_id
 
 def validate_phonenumber(number):
     network_provider=''
@@ -48,4 +66,40 @@ class VtuServicesUtils():
 
         # print(res.json())
 
+        return res.json()
+    
+    def PayForAirtimeService(service_id,amount,phone_no):
+         
+        request_id=generate_vtu_request_id(10)
+        
+        payload={
+            'request_id':request_id,
+            'serviceID':service_id,
+            'amount':amount,
+            'phone':phone_no
+
+        }
+        url=f'{base_url}pay'
+        res=requests.post(url=url,headers=post_req_headers,data=payload)
+
+        # print(res.json())
+        return res.json()
+
+
+    def PayForDataService(service_id,phone_no,variation_code):
+         
+        request_id=generate_vtu_request_id(10)
+        
+        payload={
+            'request_id':request_id,
+            'serviceID':service_id,
+            'billersCode':phone_no,
+            'phone':int(phone_no),
+            'variation_code':variation_code
+
+        }
+        url=f'{base_url}pay'
+        res=requests.post(url=url,headers=post_req_headers,data=payload)
+
+        print(res.json())
         return res.json()

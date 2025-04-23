@@ -9,8 +9,23 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated,AllowAny
+from main.models import *
+import decimal
+from main.serializers import *
 
 # Create your views here.
+def create_transaction_instance(user,payment_type,transaction_type,status,amount,description,vt_request_id):
+    transaction=Transaction.objects.create( user=user,payment_type=payment_type,
+                                                            transaction_type=transaction_type,
+                                                            status=status,
+                                                            amount=decimal.Decimal(float(amount)),
+                                                            description=description,
+                                                            vt_request_id=vt_request_id
+                                                )
+
+    return transaction
+
+
 class ValidateNumberView(APIView):
     def post(self,request):
         phone_no=request.data.get('phone_no')
@@ -58,3 +73,117 @@ class GetServiceVariationsView(APIView):
                 'message':'an error occured' + str(e),
                
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PayVariationService(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+
+    def post(self,request):
+        service_type=str(request.data.get('service_type')).upper()
+        service_id=request.data.get('service_id')
+        
+        
+        phone_no=request.data.get('phone_no')
+        res={}
+        payment_type='debit',
+        transaction_type='subscription',
+        try:
+
+
+            if service_type =='AIRTIME':
+                amount=request.data.get('amount')
+                res =VtuServicesUtils.PayForAirtimeService(service_id=service_id,
+                                                        amount=amount,
+                                                        phone_no=phone_no)
+                
+
+                
+                vt_request_id=res.get('requestId')
+                unit_price=res['content']['transactions']['unit_price']
+
+                if res['content']['transactions']['status'] == 'delivered':
+                    
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='completed',
+                        amount=unit_price,description=f'{str(unit_price)} Airtime Top-up successful',
+                        vt_request_id=vt_request_id
+                    )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'pending':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='pending', amount=unit_price,description=f'{str(unit_price)} Airtime Top-up pending',
+                    vt_request_id=vt_request_id
+                                        )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'failed':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='failed', amount=unit_price,description=f'{str(unit_price)} Airtime Top-up failed',
+                    vt_request_id=vt_request_id
+                                        )
+                    res['data']=TransactionSerializer(transaction).data
+
+                else:
+                    res['data']={}
+
+            if service_type =='DATA':
+
+
+                variation_code=request.data.get('variation_code')
+                variation_amount=request.data.get('variation_amount')
+                res =VtuServicesUtils.PayForDataService(service_id=service_id,
+                                                        phone_no=phone_no,
+                                                        variation_code=variation_code)
+                
+                vt_request_id=res.get('requestId')
+                unit_price=res['content']['transactions']['unit_price']
+                
+
+                if res['content']['transactions']['status'] == 'delivered':
+                    
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='completed',
+                        amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase successful',
+                        vt_request_id=vt_request_id
+                    )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'pending':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='pending', amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase pending',
+                    vt_request_id=vt_request_id
+                                        )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'failed':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='failed', amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase failed',
+                    vt_request_id=vt_request_id
+                                        )
+                    res['data']=TransactionSerializer(transaction).data
+
+                else:
+                    res['data']={}
+            return Response({'data':res}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'data':f'An error occured {e} with invalid parameters'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        
+
+        
+
+
+
+class VtuWebhookView(APIView):
+    def post(self,request):
+        print('INSIDE WEBBHOOK ',request)
+        return Response('ok')
