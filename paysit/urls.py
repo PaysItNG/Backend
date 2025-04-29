@@ -25,5 +25,6 @@ urlpatterns = [
     path('wallet/',include('wallet.urls')),
     path('virtual-card/',include('virtualcard.urls')),
     path('payment/',include('payment.urls')),
+    path('vtu/',include('vtu.urls')),
     re_path(r'^oauth/', include('drf_social_oauth2.urls', namespace='drf'))
 ]

@@ -325,7 +325,7 @@ class Transaction(models.Model):
         ('completed', 'completed'),
    
         ('processing', 'processing'),
-        ('completed', 'Completed'),
+      
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
@@ -337,6 +337,8 @@ class Transaction(models.Model):
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
     paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
     paystack_ref=models.CharField(max_length=100,null=True,blank=True)
+    vt_request_id=models.CharField(max_length=100,
+                                   null=True,blank=True)
     otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
