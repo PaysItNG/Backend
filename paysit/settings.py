@@ -66,14 +66,13 @@ INSTALLED_APPS = [
     'padmin',
     'wallet',
     'virtualcard',
-    #dev_joshua
     'payment',
     'vtu',
 
 
     'oauth2_provider',
     'social_django',
-    'drf_social_oauth2',
+    'drf_social_oauth2'
 
 ]
 
@@ -288,7 +287,8 @@ if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')   
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage' 
 # STATICFILES_DIRS=[
 #     os.path.join(BASE_DIR,'static')
 # ]
