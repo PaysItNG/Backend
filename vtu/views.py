@@ -75,7 +75,7 @@ class GetServiceVariationsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class PayVariationService(APIView):
+class PayAirtimeDataVariationService(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
 
@@ -176,9 +176,107 @@ class PayVariationService(APIView):
 
         except Exception as e:
             return Response({'data':f'An error occured {e} with invalid parameters'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-        
 
+
+
+
+
+class VerifyMeterNumberView(APIView):
+    def post(self,request):
+        meter_no=str(request.data.get('meter_no')).strip()
+        service_id=str(request.data.get('service_id')).strip()
+        service_type=str(request.data.get('service_type')).strip()
+
+        try:
+
+            response=VtuServicesUtils.VerifyMeterNumber(billers_code=meter_no,
+                                                        service_id=service_id,
+                                                        service_type=service_type
+                                                        ) 
+        
+            if 'WrongBillersCode' in response['content']:
+                if response['content']['WrongBillersCode']== True:
+                    return Response({
+                        'data':{},
+                        'message':response['content']['error']
+                    }, status=status.HTTP_200_OK)
+            else:
+
+                
+                return Response({
+                    'data':response['content']
+                },status=status.HTTP_200_OK)          
+            
+        except Exception as e:
+            return Response({
+                    'message':f'an error occured {e}'
+                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+class PayUtilityVariationService(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+    def post(self,request):
+        service_type=str(request.data.get('service_type')).upper()
+        service_id=request.data.get('service_id')
+        meter_type=request.data.get('meter_type')
+        meter_no=str(request.data.get('meter_no')).strip()
+        
+        
+        phone_no=request.data.get('phone_no')
+        response={}
+        payment_type='debit',
+        transaction_type='subscription'
+        amount=request.data.get('amount')
+
+        try:
+            if service_type == 'ELECTRICITY':
+                res=VtuServicesUtils.PayForElectricityService(billers_code=meter_no,
+                                                              service_id=service_id,variation_code=meter_type,
+                                                              amount=amount,phone_no=phone_no)
+                vt_request_id=res.get('requestId')
+                unit_price=res['content']['transactions']['unit_price']
+
+                if res['content']['transactions']['status'] == 'delivered':
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='completed',
+                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful',
+                        vt_request_id=vt_request_id
+                    )
+                    response['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'pending':
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='pending',
+                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending',
+                        vt_request_id=vt_request_id
+                    )
+                    response['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'failed':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='failed', amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed',
+                    vt_request_id=vt_request_id
+                                        )
+                    response['data']=TransactionSerializer(transaction).data
+
+                else:
+                    response['data']={}
+            return Response({'data':response}, status=status.HTTP_200_OK)
+                
+
+
+                
+
+
+        except Exception as e:
+            return Response({'data':f'An error occured {e} with invalid parameters'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 

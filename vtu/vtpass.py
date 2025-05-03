@@ -105,5 +105,36 @@ class VtuServicesUtils():
         url=f'{base_url}pay'
         res=requests.post(url=url,headers=post_req_headers,data=payload)
 
-        print(res.json())
+        return res.json()
+    
+
+
+    def VerifyMeterNumber(billers_code,service_id,service_type='prepaid'):
+        url=f'{base_url}merchant-verify'
+        payload={
+            'billersCode':int(billers_code),
+            'serviceID':service_id,
+            'type':service_type
+        }
+        res=requests.post(url=url,headers=post_req_headers,data=payload)
+
+        return res.json()
+    
+
+    
+    def PayForElectricityService(billers_code,service_id,phone_no,amount,variation_code='prepaid'):
+
+        request_id=generate_vtu_request_id(10)
+        url=f'{base_url}pay'
+        
+        payload={
+            'request_id':request_id,
+            'serviceID':service_id,
+            'billersCode':int(billers_code),
+            'phone':int(phone_no),
+            'variation_code':variation_code,
+            'amount':amount
+
+        }
+        res=requests.post(url=url,headers=post_req_headers,data=payload)
         return res.json()
