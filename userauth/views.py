@@ -31,6 +31,7 @@ from django.utils import timezone
 from .signals import send_user_message
 from payment.utils import PayStackUtils
 from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,JSONParser
+from django.db import DatabaseError,IntegrityError,OperationalError
 
 logger=logging.getLogger(__file__)
 PaysTack =PayStackUtils()
@@ -80,41 +81,60 @@ class SignupView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = str(request.data.get('email', '')).strip().lower()
-        if not email:
-            return Response({'message': 'Email is required', 'status': 'error','status':status.HTTP_400_BAD_REQUEST},
-                             status=status.HTTP_400_BAD_REQUEST)
-        # Check if user already exists
-        if User.objects.filter(email=email).exists():
-            return Response({'message': 'User already exists', 'email_exist': True,'status':status.HTTP_400_BAD_REQUEST},
-                             status=status.HTTP_400_BAD_REQUEST)
-        # Serialize and validate user data
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save(role='user', is_active=False)
-            raw_otp = generate_otp(6)
-            otp_hash = hash_otp(raw_otp)
-            OTP.objects.create(
-                user=user,
-                otp_hash=otp_hash,
-                expires_at=timezone.now() + timezone.timedelta(minutes=5)
-            )
 
-            """
-            Email sender
-            """
-            send_user_message(
-                "Your OTP Code",
-                f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
-                user
-            )
+        try:
+            email = str(request.data.get('email', '')).strip().lower()
+            if not email:
+                return Response({'message': 'Email is required', 'status': 'error','status':status.HTTP_400_BAD_REQUEST},
+                                status=status.HTTP_400_BAD_REQUEST)
+            # Check if user already exists
+            if User.objects.filter(email=email).exists():
+                return Response({'message': 'User already exists', 'email_exist': True,'status':status.HTTP_400_BAD_REQUEST},
+                                status=status.HTTP_400_BAD_REQUEST)
+            # Serialize and validate user data
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save(role='user', is_active=False)
+                raw_otp = generate_otp(6)
+                otp_hash = hash_otp(raw_otp)
+                OTP.objects.create(
+                    user=user,
+                    otp_hash=otp_hash,
+                    expires_at=timezone.now() + timezone.timedelta(minutes=5)
+                )
+
+                """
+                Email sender
+                """
+                send_user_message(
+                    "Your OTP Code",
+                    f"Your OTP code is {raw_otp}. It will expire in 5 minutes.",
+                    user
+                )
+                return Response({
+                    'message': 'Signup successful. OTP sent to email.',
+                    'otp':raw_otp,
+                    'status': status.HTTP_200_OK,
+                    'data': UserSerializer(user).data
+                }, status=status.HTTP_200_OK)
+            return Response({'message': 'Invalid data', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except  DatabaseError as e:
             return Response({
-                'message': 'Signup successful. OTP sent to email.',
-                'otp':raw_otp,
-                'status': status.HTTP_200_OK,
-                'data': UserSerializer(user).data
-            }, status=status.HTTP_200_OK)
-        return Response({'message': 'Invalid data', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  IntegrityError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  OperationalError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
                
 
 
@@ -201,6 +221,20 @@ class LoginView(APIView):
                 'status':status.HTTP_404_NOT_FOUND,
                 'logged_in':False
             })
+        except  DatabaseError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  IntegrityError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  OperationalError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -317,6 +351,22 @@ class RequestVerifyPasswordChangeView(APIView):
                 'user':False
             })
         
+        except  DatabaseError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  IntegrityError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  OperationalError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        
     def post(self,request):
         try:
             user=User.objects.get(email=str(request.data.get('email')).strip())
@@ -364,6 +414,22 @@ class RequestVerifyPasswordChangeView(APIView):
                 'message':'Incorrect User email',
 
             },status=status.HTTP_404_NOT_FOUND)
+        
+
+        except  DatabaseError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  IntegrityError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except  OperationalError as e:
+            return Response({
+                'message':f'an error occured at {e}',
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
         

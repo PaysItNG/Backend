@@ -87,7 +87,13 @@ def APIendpoints(request):
               
                  
              ],
-             ['profile/']
+             ['profile/'],
+             ['vtu/',
+              [
+                  'validate/phone-number/','service/variations/','pay/airtime-data/',
+                  'verify/meter/','pay/utility/',
+              ]
+              ]
 
              
               

@@ -45,7 +45,7 @@ DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ["*"]
 
-BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
+# BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
 
 INSTALLED_APPS = [
@@ -66,8 +66,8 @@ INSTALLED_APPS = [
     'padmin',
     'wallet',
     'virtualcard',
-    #dev_joshua
     'payment',
+    'vtu',
 
 
     'oauth2_provider',
@@ -76,13 +76,14 @@ INSTALLED_APPS = [
 
 ]
 
+
+
+
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    
-    
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -144,6 +145,8 @@ SIMPLE_JWT = {
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+import dj_database_url
 if env('PRODUCTION') == '1':
      DATABASES = {
         'default': {
@@ -154,9 +157,10 @@ if env('PRODUCTION') == '1':
             'PASSWORD': env('DB_PASSWORD'),
             'HOST': env('DB_HOST'),
             'PORT': env('DB_PORT'),
+           
         }
     }
-
+    
 else:
 
     DATABASES = {
@@ -169,14 +173,6 @@ else:
 
 
 
-
-
-# DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
-#     }
 
 
 # Password validation
@@ -213,7 +209,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+
 
 
 # Default primary key field type
@@ -262,7 +258,9 @@ STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
 STRIPE_WEBHHOOK_SECRET=env('Stripe_webhook_secret')
 MARQETA_API_KEY=env('Marqueta_api_key')
 ADMIN_ACCESS_TOKEN=env('Admin_access_token')
-
+VTPASS_TEST_APIKEY=env('VTpass_test_ApiKey')
+VTPASS_TEST_PUB=env('VTpass_test_PublicKey')
+VTPASS_TEST_SECRET=env('VTpass_test_SecretKey')
 
 CORS_ALLOWED_ORIGINS = [
     # "https://backend-hr0w.onrender.com",
@@ -284,8 +282,7 @@ if not DEBUG:
     # and renames the files with unique names for each version to support long-term caching
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')   
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # STATICFILES_DIRS=[
 #     os.path.join(BASE_DIR,'static')
 # ]
