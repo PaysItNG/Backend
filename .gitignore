@@ -1,5 +1,10 @@
-db.sqlite3  
+db.sqlite3 
 .venv
+.env
+env/
+/env
+staticfiles/
+staticfiles
 # Ignore Python bytecode files  
 __pycache__/  
 *.pyc  

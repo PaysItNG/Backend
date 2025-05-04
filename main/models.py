@@ -10,13 +10,16 @@ from django.contrib.auth.hashers import make_password
 import random
 # from userauth.views import generateidentifier
 import string
+import json
+import hashlib
 # Create your models here.
+from cloudinary.models import CloudinaryField
+
 
 def generateinviteID(length) ->str:
     val=''
     while len(val)<=length:
         val+=str(random.randint(0,9))
-    
     return val
 
 def generateWalletId(length)->str:
@@ -32,6 +35,13 @@ def generateidentifier(length)->str:
     return token
 
 
+def generate_otp(length):
+    """Generates a 6-digit numeric OTP"""
+    return ''.join(random.choices(string.digits, k=length))
+
+def hash_otp(otp):
+    """Hashes the OTP using SHA256"""
+    return hashlib.sha256(otp.encode()).hexdigest()
 
 class UserManager(BaseUserManager):  # type: ignore
 
@@ -61,13 +71,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=50,null=True,blank=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=100,null=True,blank=True)
+    last_name = models.CharField(max_length=100,null=True,blank=True)
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    referral_id=models.CharField(max_length=100,null=True,blank=True)
     role=models.CharField(max_length=100,null=True,blank=True,choices=ROLE_CHOICES, default='user')
     date_joined = models.DateTimeField(auto_now_add=True)
 
@@ -77,6 +86,48 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+class  OTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otps")
+    otp_hash = models.CharField(max_length=64, unique=True)  # Store hashed OTP
+    # expiry_duration=models.IntegerField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(blank=True,null=True)
+
+    class Meta:
+        ordering=['-created_at']
+
+    
+    
+
+    def is_expired(self):
+        """Check if OTP is expired"""
+        return timezone.now() > self.expires_at
+
+    
+    def create_otp(self,user,duration):
+        """Generate and save an OTP for a user"""
+        raw_otp = generate_otp(6)
+        hashed_otp = hash_otp(raw_otp)
+
+        otp_instance = OTP.objects.create(
+            user=user,
+            otp_hash=hashed_otp,
+            expires_at=timezone.now()+datetime.timedelta(seconds=duration) 
+        )
+        
+        
+        return raw_otp,otp_instance  # Return raw OTP for sending via email/SMS
+    
+    def remove_otp_with_due_range(self,duration):
+        return (self.created_at + datetime.timedelta(seconds=duration)) == self.expires_at
+    
+
+
+    
+    
+    
+    
     
 
 class UserProfile(models.Model):
@@ -88,15 +139,17 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     address = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-    utility_bill=models.URLField(max_length=1000, blank=True, null=True)
+    utility_bill=CloudinaryField('utility_bill',null=True,blank=True)
     bvn=models.CharField(max_length=100, blank=True, null=True)
     tier=models.CharField(max_length=100,null=True,blank=True, choices=Tiers,default='tier1')
     referrals=models.ManyToManyField(User,related_name='referrals',blank=True)
     referee=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE,related_name='referee')
+    referral_id=models.CharField(max_length=100,null=True,blank=True)
+    otp=models.OneToOneField(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='profile_otp')
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    profile_picture = models.URLField( blank=True, null=True,max_length=5000)
+    profile_picture = CloudinaryField('profile_picture',null=True,blank=True)
 
     def __str__(self):
         return f"Profile of {self.user.email}"
@@ -120,19 +173,19 @@ class KYCVerification(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
-    id_document =  models.URLField( blank=True, null=True,max_length=5000)
-    selfie = models.URLField(max_length=5000, blank=True, null=True)
+    id_document =  CloudinaryField('id_document',null=True,blank=True, )
+    selfie = CloudinaryField('selfie',null=True,blank=True, )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES,blank=True, null=True)
     submitted=models.BooleanField(default=False)
-    submitted_at = models.DateTimeField(default='', blank=True,null=True)
     reviewed_at = models.DateTimeField(default='',blank=True,null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
 
     def __str__(self):
         return f"KYC Status for {self.user.email}: {self.status}"
 
     def save(self,*args,**kwargs):
 
-        if self.status == 'verified' or 'rejected':
+        if self.status in ['verified','rejected']:
             self.reviewed_at=timezone.now()
         else:
             self.reviewed_at=None
@@ -159,19 +212,15 @@ class Security(models.Model):
     token=models.CharField(max_length=100,null=True,blank=True)
     locked = models.BooleanField(default=False)
     two_factor_auth_enabled = models.BooleanField(default=False)
-    
+    otp=models.OneToOneField(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='security_otp')
     login_attempt_count = models.IntegerField(default=0)
-    date_created=models.DateTimeField()
+    date_created=models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'security'
 
 
-    def save(self,*args,**kwargs):
-       
-        self.date_created=timezone.now()
-
-        super().save(*args,**kwargs)
+    
 
 
 
@@ -199,9 +248,9 @@ class RoleInvite(models.Model):
         user_emails=[user.email for user in list(User.objects.all())]
 
         if self.email in user_emails:
-            self.user=User.objects.get(email=self.email)
+            self.user=self.objects.get(email=self.email)
         else:
-            user=User.objects.create(
+            user=self.objects.create(
                 email=self.email.strip(),
                 username=self.email.strip(),
             )
@@ -226,18 +275,17 @@ class Wallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f'{self.user.email} Wallet'
+    
+    
+    def save(self, *args, **kwargs):  
+        if self.wallet_id is None:  
+            wallet_id = generateinviteID(7)  
+            # Ensure uniqueness of wallet_id  
+            while self.__class__.objects.filter(wallet_id=wallet_id).exists():  
+                wallet_id = generateinviteID(7)  
+            self.wallet_id = f'@{wallet_id}'  
+        super().save(*args, **kwargs) 
 
-    # def save(self,*args,**kwargs):
-    #     wallet_ids=list(x.wallet_id for x in Wallet.objects.all())
-    #     if self.wallet_id == None:
-    #         if self.wallet_id not in wallet_ids:
-    #             self.wallet_id=f'@{generateWalletId(7)}'
-
-    #     super().save(*args,**kwargs)
-    def save(self, *args, **kwargs):
-        if not self.wallet_id:
-            self.wallet_id = uuid.uuid4() 
-        super().save(*args, **kwargs)
 
 
 
@@ -245,7 +293,7 @@ class Wallet(models.Model):
 class Business(models.Model):
     owner=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE, related_name='business_owner')
     company_name=models.CharField(max_length=1000,null=True,blank=True)
-    funds=models.PositiveIntegerField(default=0,blank=True,null=True)
+    balance=models.FloatField(blank=True,null=True)
     staffs=models.ManyToManyField(User,related_name='company_staffs')
     date_created=models.DateTimeField(auto_now_add=True)
 
@@ -263,18 +311,21 @@ class BusinessTerminal(models.Model):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ('deposit', 'Deposit'),
-        ('withdrawal', 'Withdrawal'),
-        ('transfer', 'Transfer'),
-        ('subscription', 'Subscription')
+        ('deposit', 'deposit'),
+        ('withdrawal', 'withdrawal'),
+        ('transfer', 'transfer'),
+        ('subscription', 'subscription')
     ]
     PAYMENT_TYPE=(
         ('debit','debit'),
         ('credit','credit'),
     )
     STATUS_CHOICES = [
+        ('pending', 'pending'),
+        ('completed', 'completed'),
+   
         ('processing', 'processing'),
-        ('completed', 'Completed'),
+      
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
@@ -284,6 +335,11 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
+    paystack_ref=models.CharField(max_length=100,null=True,blank=True)
+    vt_request_id=models.CharField(max_length=100,
+                                   null=True,blank=True)
+    otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
     reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -292,7 +348,26 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
-  
+    def save(self,*args,**kwargs):
+        ref_id=generateidentifier(10)
+
+        debit_transaction_types=['withdrawal','transfer','subscription']
+        if self.paystack_data!= None:
+            self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
+        if self.transaction_type not in debit_transaction_types:
+            self.payment_type='credit'
+        else:
+            self.payment_type='debit'
+
+            
+        if self.reference_id == None:
+            try:
+                Transaction.objects.get(reference_id=ref_id)
+
+            except ObjectDoesNotExist:
+                self.reference_id=ref_id
+
+        super().save(*args,**kwargs)
 
 class BankDetails(models.Model):
     user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
@@ -311,17 +386,38 @@ class BankDetails(models.Model):
     def __str__(self):
         return f'{self.user.email} bank details'
 
+class Notification(models.Model):
+    user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    message=models.CharField(max_length=1000,null=True,blank=True)
+    is_read=models.BooleanField(default=False)
+    created_at=models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Notification for {self.user.email}'
+
 
 
 
 
 class Card(models.Model):
+    CURRENCY_CHOICES = [
+   
+    ('USD', 'US Dollar'),
+    ('EUR', 'Euro'),]
     user=models.ForeignKey(User,null=True,blank=True,on_delete=models.CASCADE)
+    card_holder_ref_id=models.CharField(max_length=1000,null=True,blank=True)
+    card_ref_id=models.CharField(max_length=1000,null=True,blank=True)
     card_number=models.CharField(max_length=200,null=True,blank=True)
     card_holder_name=models.CharField(max_length=200,null=True,blank=True)
     expiry_date=models.DateField(null=True,blank=True)
     cvv=models.CharField(max_length=10,null=True,blank=True)
     card_type=models.CharField(max_length=100,null=True,blank=True)
+    card_brand=models.CharField(max_length=100,null=True,blank=True)
+    last_four=models.CharField(max_length=100,null=True,blank=True)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
+    status=models.CharField(max_length=100,null=True,blank=True)
+    issued=models.BooleanField(default=False)
     is_primary=models.BooleanField(default=False)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)

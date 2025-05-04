@@ -17,6 +17,23 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+import environ
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env()
+
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import cloudinary_storage
+
+
+cloudinary.config(
+    cloud_name='ded3ejyc1',
+    api_key='767488432441825',
+    api_secret='alDZdJ_w_UWNOOZrwWpMl74tFNk'
+)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -24,11 +41,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
+# BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
 
 INSTALLED_APPS = [
@@ -40,13 +57,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+     "corsheaders",
+     "cloudinary",
 
     'main',
     'userauth',
     'merchant',
     'padmin',
-    #dev_joshua
+    'wallet',
+    'virtualcard',
     'payment',
+    'vtu',
 
 
     'oauth2_provider',
@@ -55,8 +76,14 @@ INSTALLED_APPS = [
 
 ]
 
+
+
+
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -118,12 +145,33 @@ SIMPLE_JWT = {
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+
+if env('PRODUCTION') == '1':
+     DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': env('DB_NAME'),
+            'URL':env('DB_URL'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env('DB_PORT'),
+           
+        }
     }
-}
+    
+else:
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+
+
+
 
 
 # Password validation
@@ -160,7 +208,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -200,5 +249,49 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
 ]
 ACTIVATE_JWT=True
 
-PSTACK_SECRET_KEY="sk_test_71dcb2428868822d8cbd2c3ae99dfa4fde6dd26e"
-PSTACK_PUBLIC_KEY ="pk_test_fe7165c87ee551abd28a94937f8692cc7e3710cb"
+
+PSTACK_PUB_KEY=env('Pstack_test_public_key')
+PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
+STRIPE_PUB_KEY=env('Stripe_test_public_key')
+STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
+STRIPE_WEBHHOOK_SECRET=env('Stripe_webhook_secret')
+MARQETA_API_KEY=env('Marqueta_api_key')
+ADMIN_ACCESS_TOKEN=env('Admin_access_token')
+VTPASS_TEST_APIKEY=env('VTpass_test_ApiKey')
+VTPASS_TEST_PUB=env('VTpass_test_PublicKey')
+VTPASS_TEST_SECRET=env('VTpass_test_SecretKey')
+
+CORS_ALLOWED_ORIGINS = [
+    # "https://backend-hr0w.onrender.com",
+    "http://localhost:3000"
+]
+
+# CORS_ORIGIN_WHITELIST = [
+#     "http://localhost:3000"
+# ]
+# CORS_ALLOW_ALL_ORIGINS = True
+
+
+
+STATIC_URL = '/static/'
+if not DEBUG:
+    # Tell Django to copy static assets into a path called `staticfiles` (this is specific to Render)
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    # Enable the WhiteNoise storage backend, which compresses static files to reduce disk use
+    # and renames the files with unique names for each version to support long-term caching
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# STATICFILES_DIRS=[
+#     os.path.join(BASE_DIR,'static')
+# ]
+MEDIA_URL = '/media/'
+MEDIA_ROOT=os.path.join(BASE_DIR,'static/media')
+
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME':'ded3ejyc1',
+    'API_KEY':'767488432441825',
+    'API_SECRET':'alDZdJ_w_UWNOOZrwWpMl74tFNk'
+}

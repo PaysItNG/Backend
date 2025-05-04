@@ -5,7 +5,7 @@ from rest_framework.response import Response
 import requests,json
 from .models import DedicatedAccount
 
-PSTACK_PUBLIC_KEY=settings.PSTACK_PUBLIC_KEY
+PSTACK_PUBLIC_KEY=settings.PSTACK_PUB_KEY
 PSTACK_SECRET_KEY=settings.PSTACK_SECRET_KEY
 User = get_user_model()
 

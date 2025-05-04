@@ -26,7 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         user = User.objects.create(email=str(validated_data['email']).lower(),
         username=str(validated_data['email']).lower(),
-        # first_name=str(validated_data['first_name']).lower(),last_name=str(validated_data['last_name']).lower()
+        first_name=str(validated_data['first_name']).lower(),last_name=str(validated_data['last_name']).lower()
         )
         user.set_password(validated_data['password'])
         user.save()
@@ -34,8 +34,8 @@ class UserSerializer(serializers.ModelSerializer):
         # user_profile=UserProfile.objects.create(user=user)
         # kyc=KYCVerification.objects.create(user=user)
 
-        token=get_tokens_for_user(user)
-        print(token)
+        # token=get_tokens_for_user(user)
+        # print(token)
         return user
     
     
@@ -47,6 +47,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model=UserProfile
         fields="__all__"
+        extra_kwargs={'user':{'read_only':True},
+                      'tier':{'read_only':True},
+                     }
 
 
 
@@ -81,4 +84,25 @@ class SecuritySerializer(serializers.ModelSerializer):
 class RoleInviteSerializer(serializers.ModelSerializer):
     class Meta:
         model=RoleInvite
+        fields="__all__"
+
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Wallet
+        fields="__all__"
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Transaction
+        fields="__all__"
+
+
+
+
+class Cardserializer(serializers.ModelSerializer):
+    class Meta:
+        model=Card
         fields="__all__"
