@@ -146,7 +146,6 @@ SIMPLE_JWT = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 
-import dj_database_url
 if env('PRODUCTION') == '1':
      DATABASES = {
         'default': {
