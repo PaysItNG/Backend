@@ -54,6 +54,8 @@ class AirtimeDataVariationService(APIView):
     authentication_classes=[JWTAuthentication]
     def get(self,request):
         service_id=request.data.get('service_id')
+        if not service_id:
+            return Response("empty service_id",status=status.HTTP_400_BAD_REQUEST)
         try:
         
             res=VtuServicesUtils.GetServiceVariations(service_id=service_id)
@@ -77,7 +79,7 @@ class AirtimeDataVariationService(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
-                'message':'an error occured' + str(e),
+                'message':'an error occured ' + str(e),
                
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
@@ -243,7 +245,7 @@ class PayUtilityVariationService(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful',
+                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
                         vt_request_id=vt_request_id
                     )
                     response['data']=TransactionSerializer(transaction).data
@@ -252,7 +254,7 @@ class PayUtilityVariationService(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='pending',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending',
+                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
                         vt_request_id=vt_request_id
                     )
                     response['data']=TransactionSerializer(transaction).data
@@ -260,7 +262,7 @@ class PayUtilityVariationService(APIView):
                 elif res['content']['transactions']['status'] == 'failed':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed',
+                    status='failed', amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
                     vt_request_id=vt_request_id
                                         )
                     response['data']=TransactionSerializer(transaction).data
