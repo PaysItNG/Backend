@@ -56,7 +56,7 @@ class GetServiceVariationsView(APIView):
          
             for item in res['content']['variations']:
                 if '30 days' in str(item['name']).lower():
-                    item['duration']='monthly'
+                    item['duration']= 'monthly'
                 elif 'month' in str(item['name']).lower():
                     item['duration']='monthly'
                 elif 'week' in  str(item['name']).lower():
@@ -82,7 +82,6 @@ class PayAirtimeDataVariationService(APIView):
     def post(self,request):
         service_type=str(request.data.get('service_type')).upper()
         service_id=request.data.get('service_id')
-        
         
         phone_no=request.data.get('phone_no')
         res={}

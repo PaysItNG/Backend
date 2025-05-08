@@ -63,10 +63,13 @@ def get_user_ip(request):
 class CreateVirtualCardView(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
+
+    def get(self,request):
+       pass
   
     def post(self,request,*args,**kwargs):
             ip_addr=get_user_ip(request=request)
-            card,created=Card.objects.get_or_create(user=request.user)
+            card,_=Card.objects.get_or_create(user=request.user)
 
  
             data = {
@@ -164,7 +167,7 @@ class CardHolderRetrieveView(APIView):
 
 
 
-class SwapFundToDollarCard(APIView):
+class AddNairaFundToDollarCard(APIView):
    permission_classes=[IsAuthenticated]
    authentication_classes=[JWTAuthentication]
 
@@ -190,8 +193,8 @@ class SwapFundToDollarCard(APIView):
       
 
    def post(self,request):
-      from_currency=str(request.data.get('from_currency')).strip()
-      to_currency=str(request.data.get('to_currency')).strip()
+      # from_currency=str(request.data.get('from_currency')).strip()
+      # to_currency=str(request.data.get('to_currency')).strip()
       amount=round(Decimal(request.data.get('amount')),2)
       converted_amount=round(Decimal(request.data.get('converted_amount')),2)
       res=StripePaymentUtils.get_paysit_stripe_balance()
@@ -220,7 +223,32 @@ class SwapFundToDollarCard(APIView):
       
 
 
- 
+class AddDollarFundToDollarCard(APIView):
+   def post(self,request):
+      amount=round(Decimal(request.data.get('amount')),2)
+      res=StripePaymentUtils.get_paysit_stripe_balance()
+      issuing_balance=res['issuing']['available'][0].to_dict()
+      wallet=Wallet.objects.get(user=request.user)
+      
+      if wallet.usd_balance < round(issuing_balance['amount']/100,2):
+         card,_=Card.objects.get_or_create(user=request.user)
+
+         if card.issued:
+            if amount <= wallet.usd_balance:
+               card.balance+=amount
+               card.save()
+               return Response({'message':'Card successfully funded','data':Cardserializer(card).data,
+                                'success':True}, status=status.HTTP_200_OK)
+            else:
+               return Response({'message':'Insuffient funds','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+         else:
+            
+            return Response({'message':'Card is not issued,contact support','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+      return Response({'message':'Can\'t fund account at this time, contact support for futher assistance','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
    
 
 

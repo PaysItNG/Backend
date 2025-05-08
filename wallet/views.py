@@ -17,7 +17,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from main.paystack import *
 from main.serializers import *
-
+from virtualcard.utils import StripePaymentUtils
+from decimal import Decimal
+from rest_framework import status
 
 no_success_status=['pending','ongoing','queued']
 
@@ -150,6 +152,86 @@ class DepositFundsView(APIView):
 
 
 
+class SwapCurrencyWalletFunds(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+    def get(self,request):
+      from_currency=str(request.data.get('from_currency')).strip()
+      to_currency=str(request.data.get('to_currency')).strip()
+      amount=Decimal(request.data.get('amount'))
+
+      currency=StripePaymentUtils.exchange_conversion(to_curr=to_currency,
+                                                      from_curr=from_currency,
+                                                      amount=amount)
+      
+      if currency['success'] == True:
+         return Response({
+            'amount':f"{currency['result']:.2f}",'data':currency['query'],
+            'meta_data':currency
+         },status=status.HTTP_200_OK)
+      
+      else:
+         return Response({
+            'data':{}
+         },status=status.HTTP_403_FORBIDDEN)
+      
+    def post(self,request):
+        from_currency=str(request.data.get('from_currency')).strip().upper()
+        to_currency=str(request.data.get('to_currency')).strip().upper()
+        amount=round(Decimal(request.data.get('amount')),2)
+        converted_amount=round(Decimal(request.data.get('converted_amount')),2)
+
+        try:
+            wallet,_=Wallet.objects.get_or_create(user=request.user)
+
+            if from_currency == 'NGN' and to_currency == 'USD':
+                wallet.balance-=amount
+                wallet.usd_balance+=converted_amount
+                wallet.save()
+                return Response({
+                    'data':WalletSerializer(wallet).data,'swapped':True}, status=status.HTTP_200_OK)
+            elif from_currency == 'USD' and to_currency =='NGN':
+                wallet.usd_balance-=amount
+                wallet.balance+=converted_amount
+                wallet.save()
+                return Response({
+                    'data':WalletSerializer(wallet).data,
+                    'swapped':True
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'data':{},
+                    'msg':'can\'t swap both currencies at the moment contact support for futher assistance',
+                    'swapped':True
+                },status=status.HTTP_406_NOT_ACCEPTABLE)
+        except Exception as e:
+            return Response({
+                    'data':{},
+                    'msg':f'an issue accured {e}'
+                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+            
+            
+class UserWalletData(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+    def get(self,request):
+        try:
+            wallet=Wallet.objects.get(user=request.user)
+            return Response({
+                'data':WalletSerializer(wallet).data
+            }, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+
+                return Response({
+                    'data':{},
+                    'msg':'No wallet assigned to user'
+                },status=status.HTTP_404_NOT_FOUND)
+            
+        
+
+        
 
 
 class TransferFundsView(APIView):
