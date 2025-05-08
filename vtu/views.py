@@ -12,6 +12,9 @@ from rest_framework.permissions import IsAuthenticated,AllowAny
 from main.models import *
 import decimal
 from main.serializers import *
+from . import gsubs
+
+
 
 # Create your views here.
 def create_transaction_instance(user,payment_type,transaction_type,status,amount,description,vt_request_id):
@@ -44,41 +47,63 @@ class ValidateNumberView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 
-class GetServiceVariationsView(APIView):
+
+    
+
+
+class AirtimeDataVariationService(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
     def get(self,request):
-        service_id=request.data.get('service_id')
+        service_id=request.GET.get('service_id')
         try:
         
-            res=VtuServicesUtils.GetServiceVariations(service_id=service_id)
-
-         
+            res=VtuServicesUtils.GetServiceVariations(service_id=f'{service_id}-data')
+            res2 = gsubs.fetch_data_plans(service_id)
+            
+            
             for item in res['content']['variations']:
+                item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
+                item['provider']='VTPASS'
+                item['plan_id']=str(item['variation_code']).strip()
                 if '30 days' in str(item['name']).lower():
                     item['duration']= 'monthly'
+                    size=item['name'].split(' ')
+                    item['qty']=VtuServicesUtils.extractDataSize(size)
+                    
                 elif 'month' in str(item['name']).lower():
                     item['duration']='monthly'
+                    size=item['name'].split(' ')
+                    item['qty']=VtuServicesUtils.extractDataSize(size)
+                    
+                   
                 elif 'week' in  str(item['name']).lower():
                     item['duration']='weekly'
+                    size=item['name'].split(' ')
+                    item['qty']=VtuServicesUtils.extractDataSize(size)
                 else:
 
                     item['duration']='daily'
+                    size=item['name'].split(' ')
+                    item['qty']=VtuServicesUtils.extractDataSize(size)
+            for item in res2:
+                item['provider']='GSUBS'
 
+            response_data  ={
+                "provider1":res,
+                "provider2":res2
+            }
+            
             return Response({
-                'data':res
+                'data':response_data,
             }, status=status.HTTP_200_OK)
+        
         except Exception as e:
             return Response({
                 'message':'an error occured' + str(e),
                
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class PayAirtimeDataVariationService(APIView):
-    permission_classes=[IsAuthenticated]
-    authentication_classes=[JWTAuthentication]
-
+            
     def post(self,request):
         service_type=str(request.data.get('service_type')).upper()
         service_id=request.data.get('service_id')
@@ -88,8 +113,6 @@ class PayAirtimeDataVariationService(APIView):
         payment_type='debit',
         transaction_type='subscription',
         try:
-
-
             if service_type =='AIRTIME':
                 amount=request.data.get('amount')
                 res =VtuServicesUtils.PayForAirtimeService(service_id=service_id,

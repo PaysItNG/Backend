@@ -23,9 +23,7 @@ env = environ.Env()
 environ.Env.read_env()
 
 import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-import cloudinary_storage
+
 
 
 cloudinary.config(
@@ -41,7 +39,7 @@ cloudinary.config(
 SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
@@ -146,7 +144,6 @@ SIMPLE_JWT = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 
-import dj_database_url
 if env('PRODUCTION') == '1':
      DATABASES = {
         'default': {
@@ -251,16 +248,21 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
 ACTIVATE_JWT=True
 
 
-PSTACK_PUB_KEY=env('Pstack_test_public_key')
-PSTACK_SECRET_KEY=env('Pstack_test_secret_key')
-STRIPE_PUB_KEY=env('Stripe_test_public_key')
-STRIPE_SECRET_KEY=env('Stripe_test_secret_key')
-STRIPE_WEBHHOOK_SECRET=env('Stripe_webhook_secret')
-MARQETA_API_KEY=env('Marqueta_api_key')
-ADMIN_ACCESS_TOKEN=env('Admin_access_token')
-VTPASS_TEST_APIKEY=env('VTpass_test_ApiKey')
-VTPASS_TEST_PUB=env('VTpass_test_PublicKey')
-VTPASS_TEST_SECRET=env('VTpass_test_SecretKey')
+PSTACK_PUB_KEY=env('Pstack_test_public_key').strip()
+PSTACK_SECRET_KEY=env('Pstack_test_secret_key').strip()
+STRIPE_PUB_KEY=env('Stripe_test_public_key').strip()
+STRIPE_SECRET_KEY=env('Stripe_test_secret_key').strip()
+STRIPE_WEBHHOOK_SECRET=env('Stripe_webhook_secret').strip()
+MARQETA_API_KEY=env('Marqueta_api_key').strip()
+ADMIN_ACCESS_TOKEN=env('Admin_access_token').strip()
+VTPASS_TEST_APIKEY=env('VTpass_test_ApiKey').strip()
+VTPASS_TEST_PUB = env('VTpass_test_PublicKey').strip()
+VTPASS_TEST_SECRET=env("VTpass_test_SecretKey").strip()
+
+GSUB_KEY = env("GSUB_Key").strip()
+
+
+DATA_DISCOUNT=0.5
 
 CORS_ALLOWED_ORIGINS = [
     # "https://backend-hr0w.onrender.com",
