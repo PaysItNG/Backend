@@ -223,6 +223,8 @@ class VtuServicesView(APIView):
                     )
                     res['data']=TransactionSerializer(transaction).data
 
+
+
                 elif res['content']['transactions']['status'] == 'pending':
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
