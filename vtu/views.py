@@ -205,6 +205,7 @@ class VtuServicesView(APIView):
 
 
             if service_type == 'ELECTRICITY':
+                amount=request.data.get('amount')
                 meter_type=request.data.get('meter_type')
                 meter_no=str(request.data.get('meter_no')).strip()
                 res=VtuPass.PayForElectricityService(billers_code=meter_no,
