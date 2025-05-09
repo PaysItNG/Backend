@@ -157,6 +157,19 @@ class VtuServicesUtils():
         res=requests.post(url=self.url,headers=post_req_headers,data=payload)
         return res.json()
     
+
+    def VerifySmartCardNumber(self,card_number,service_id):
+        url='https://sandbox.vtpass.com/api/merchant-verify'
+        
+        payload={
+            'billersCode':card_number,
+            'serviceID':service_id
+        }
+
+
+        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        return res.json()
+    
     def PayForTvService(self):
         request_id=generate_vtu_request_id(10)
         url=f'{self.url}pay'

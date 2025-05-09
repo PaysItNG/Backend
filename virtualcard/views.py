@@ -65,54 +65,77 @@ class CreateVirtualCardView(APIView):
     authentication_classes=[JWTAuthentication]
 
     def get(self,request):
-       pass
-  
+      try:
+          card=Card.objects.get(user=request.user)
+
+          if card.issued == True:
+             return Response({
+                'message':'Card already assigned to user',
+                'issued':True,
+                'created':True
+             },status=status.HTTP_200_OK)
+          else:
+              return Response({
+                'message':'Card not issued Contact support for assistance','issued':False,'created':True
+             },status=status.HTTP_200_OK)
+      
+      except:
+         price=3
+         return Response({
+            'message':'Virtual card cost f"${price}" ','issued':False,'created':False,},status=status.HTTP_200_OK)
+      
+
     def post(self,request,*args,**kwargs):
             ip_addr=get_user_ip(request=request)
-            card,_=Card.objects.get_or_create(user=request.user)
 
- 
-            data = {
-            "type": "individual",
-            "name": f"{request.user.first_name} {request.user.last_name}",
-            "email": f"{request.user.email}",
-            "phone_number": "+18888675322",
-            "billing[address][line1]": "1234 Main Street",
-            "billing[address][city]": "San Francisco",
-            "billing[address][state]": "CA",
-            "billing[address][country]": "US",
-            "billing[address][postal_code]": "94111",
-            "individual[first_name]":request.user.first_name,
-            "individual[last_name]":request.user.last_name,
-            "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-            "individual[card_issuing][user_terms_acceptance][ip]":get_user_ip(request=request),
-            "spending_controls[allowed_categories]" :None,
-            "spending_controls[spending_limits][0][amount]":100000,
-            "spending_controls[spending_limits][0][interval]":'daily',
-            "spending_controls[spending_limits_currency]":'USD',
-            "spending_controls[blocked_merchant_countries][0]":[],
-            "spending_controls[allowed_categories][0]":['general_services'],
-             "spending_controls[allowed_categories][1]":['advertising_services'],
+            price=3
+            try:
+               wallet=Wallet.objects.get(user=request.user)
+               card,_=Card.objects.get_or_create(user=request.user)
+
+
+               data = {
+               "type": "individual",
+               "name": f"{request.user.first_name} {request.user.last_name}",
+               "email": f"{request.user.email}",
+               "phone_number": "+18888675322",
+               "billing[address][line1]": "1234 Main Street",
+               "billing[address][city]": "San Francisco",
+               "billing[address][state]": "CA",
+               "billing[address][country]": "US",
+               "billing[address][postal_code]": "94111",
+               "individual[first_name]":request.user.first_name,
+               "individual[last_name]":request.user.last_name,
+               "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
+               "individual[card_issuing][user_terms_acceptance][ip]":ip_addr,
+               "spending_controls[allowed_categories]" :None,
+               "spending_controls[spending_limits][0][amount]":100000,
+               "spending_controls[spending_limits][0][interval]":'daily',
+               "spending_controls[spending_limits_currency]":'USD',
+               "spending_controls[blocked_merchant_countries][0]":[],
+               "spending_controls[allowed_categories][0]":['general_services'],
+               "spending_controls[allowed_categories][1]":['advertising_services'],
+               
+
+
+               }
+               
+               if card.issued == True:
+                  return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
+               
+               else:
+
+                  res=StripePaymentUtils.create_card_holder(data=data)
+   
+                  return Response({
+                        'data':res,
+                        'message':'card successfully issued' },status=status.HTTP_201_CREATED)
             
 
-
-        }
-            
-            if card.issued == True:
-               return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
-            
-            else:
-
-              res=StripePaymentUtils.create_card_holder(data=data)
-  
-              return Response({
-                  'data':res,
-                  'message':'card successfully issued'
-                  
-
-                },status=status.HTTP_201_CREATED)
-
-
+            except Exception as e:
+               return  Response({
+                        'data':{},
+                        'message':f'an error occured at {e}' },status=status.HTTP_404_NOT_FOUND)
 
 
 class UpdateCardholderView(APIView):
