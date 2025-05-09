@@ -93,45 +93,53 @@ class CreateVirtualCardView(APIView):
                wallet=Wallet.objects.get(user=request.user)
                card,_=Card.objects.get_or_create(user=request.user)
 
+               if round(Decimal(price),2) < wallet.usd_balance:
 
-               data = {
-               "type": "individual",
-               "name": f"{request.user.first_name} {request.user.last_name}",
-               "email": f"{request.user.email}",
-               "phone_number": "+18888675322",
-               "billing[address][line1]": "1234 Main Street",
-               "billing[address][city]": "San Francisco",
-               "billing[address][state]": "CA",
-               "billing[address][country]": "US",
-               "billing[address][postal_code]": "94111",
-               "individual[first_name]":request.user.first_name,
-               "individual[last_name]":request.user.last_name,
-               "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-               "individual[card_issuing][user_terms_acceptance][ip]":ip_addr,
-               "spending_controls[allowed_categories]" :None,
-               "spending_controls[spending_limits][0][amount]":100000,
-               "spending_controls[spending_limits][0][interval]":'daily',
-               "spending_controls[spending_limits_currency]":'USD',
-               "spending_controls[blocked_merchant_countries][0]":[],
-               "spending_controls[allowed_categories][0]":['general_services'],
-               "spending_controls[allowed_categories][1]":['advertising_services'],
-               
+                  data = {
+                  "type": "individual",
+                  "name": f"{request.user.first_name} {request.user.last_name}",
+                  "email": f"{request.user.email}",
+                  "phone_number": "+18888675322",
+                  "billing[address][line1]": "1234 Main Street",
+                  "billing[address][city]": "San Francisco",
+                  "billing[address][state]": "CA",
+                  "billing[address][country]": "US",
+                  "billing[address][postal_code]": "94111",
+                  "individual[first_name]":request.user.first_name,
+                  "individual[last_name]":request.user.last_name,
+                  "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
+                  "individual[card_issuing][user_terms_acceptance][ip]":ip_addr,
+                  "spending_controls[allowed_categories]" :None,
+                  "spending_controls[spending_limits][0][amount]":100000,
+                  "spending_controls[spending_limits][0][interval]":'daily',
+                  "spending_controls[spending_limits_currency]":'USD',
+                  "spending_controls[blocked_merchant_countries][0]":[],
+                  "spending_controls[allowed_categories][0]":['general_services'],
+                  "spending_controls[allowed_categories][1]":['advertising_services'],
+                  
 
 
-               }
-               
-               if card.issued == True:
-                  return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
-               
+                  }
+                  
+                  if card.issued == True:
+                     return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
+                  
+                  else:
+
+                     res=StripePaymentUtils.create_card_holder(data=data)
+                     byte_array=bytearray(json.dumps(res).encode('utf-8'))
+                     event = stripe.Event.construct_from(json.loads(byte_array), settings.STRIPE_SECRET_KEY)
+                     # print('EVENT ',event)
+      
+                     return Response({
+                           'data':res,
+                           'message':'card successfully issued' },status=status.HTTP_201_CREATED)
                else:
 
-                  res=StripePaymentUtils.create_card_holder(data=data)
-   
-                  return Response({
-                        'data':res,
-                        'message':'card successfully issued' },status=status.HTTP_201_CREATED)
-            
-
+                  return  Response({
+                        'data':{},
+                        'message':'insufficient USD balance' },status=status.HTTP_406_NOT_ACCEPTABLE)
+               
             except Exception as e:
                return  Response({
                         'data':{},
@@ -323,12 +331,11 @@ class GenerateEphemeralKeys(APIView):
    def post(self,request,*args,**kwargs):
       
       try:
-        ephemeralKey = stripe.EphemeralKey.create( nonce=request.data.get('nonce'),
+         ephemeralKey = stripe.EphemeralKey.create( nonce=request.data.get('nonce'),
                                         issuing_card=request.data.get('card_id'),
                                         stripe_version='2025-02-24.acacia',
                                     )
-        
-        return Response({
+         return Response({
           'data':ephemeralKey.secret,
           'status':'ok'
         })
@@ -353,21 +360,15 @@ def virtualcard_webhook_view(request):
     return HttpResponse(status=400)
 
   # Handle the event
-
   data={
         'id':event['data']['object']['id'],
-        'spending_controls':event['data']['object']['spending_controls']
-        
+        'spending_controls':event['data']['object']['spending_controls']       
         }
-#   print()
-  
-  user_email=event['data']['object']['email']
-#   print(user_email)
 
-  
+  user_email=event['data']['object']['email']
+
   if event.type == 'issuing_cardholder.created':
-    
-    StripePaymentUtils.create_card(data=data,email=user_email)
+   StripePaymentUtils.create_card(data=data,email=user_email)
 
   if event.type == 'issuing_cardholder.updated':
      StripePaymentUtils.update_card(data=data,email=user_email)
@@ -414,7 +415,6 @@ def payment_webhook_view(request):
 @method_decorator(csrf_exempt, name='dispatch')
 class CardAuthorizationWebhook(View): #Handles all card authorization events when a purchase is made with the card
 
-   
    def post(self,request,*args,**kwargs):
       payload = request.body
       signature = request.headers.get("Stripe-Signature")
