@@ -17,6 +17,8 @@ from . import gsubs
 
 
 # Create your views here.
+
+VtuPass=VtuServicesUtils()
 def create_transaction_instance(user,payment_type,transaction_type,status,amount,description,vt_request_id):
     transaction=Transaction.objects.create( user=user,payment_type=payment_type,
                                                             transaction_type=transaction_type,
@@ -60,7 +62,7 @@ class VtuServicesView(APIView):
         try:
             
             if service_type == 'TV':
-                res=VtuServicesUtils.GetServiceVariations(service_id=service_id)
+                res=VtuPass.GetServiceVariations(service_id=service_id)
                 return Response({
                 'data':res,
                     }, status=status.HTTP_200_OK)
@@ -68,9 +70,8 @@ class VtuServicesView(APIView):
 
                 res2 = gsubs.fetch_data_plans(service_id)
                 
-                res=VtuServicesUtils.GetServiceVariations(service_id=f'{service_id}-data')
+                res=VtuPass.GetServiceVariations(service_id=f'{service_id}-data')
 
-                
                 for item in res['content']['variations']:
                     item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
                     item['provider']='VTPASS'
@@ -78,23 +79,23 @@ class VtuServicesView(APIView):
                     if '30 days' in str(item['name']).lower():
                         item['duration']= 'monthly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuServicesUtils.extractDataSize(size)
+                        item['qty']=VtuPass.extractDataSize(size)
                         
                     elif 'month' in str(item['name']).lower():
                         item['duration']='monthly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuServicesUtils.extractDataSize(size)
+                        item['qty']=VtuPass.extractDataSize(size)
                         
                     
                     elif 'week' in  str(item['name']).lower():
                         item['duration']='weekly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuServicesUtils.extractDataSize(size)
+                        item['qty']=VtuPass.extractDataSize(size)
                     else:
 
                         item['duration']='daily'
                         size=item['name'].split(' ')
-                        item['qty']=VtuServicesUtils.extractDataSize(size)
+                        item['qty']=VtuPass.extractDataSize(size)
                 for item in res2:
                     item['provider']='GSUBS'
 
@@ -124,11 +125,9 @@ class VtuServicesView(APIView):
         try:
             if service_type =='AIRTIME':
                 amount=request.data.get('amount')
-                res =VtuServicesUtils.PayForAirtimeService(service_id=service_id,
+                res =VtuPass.PayForAirtimeService(service_id=service_id,
                                                         amount=amount,
                                                         phone_no=phone_no)
-                
-
                 
                 vt_request_id=res.get('requestId')
                 unit_price=res['content']['transactions']['unit_price']
@@ -167,7 +166,7 @@ class VtuServicesView(APIView):
 
                 variation_code=request.data.get('variation_code')
                 variation_amount=request.data.get('variation_amount')
-                res =VtuServicesUtils.PayForDataService(service_id=service_id,
+                res =VtuPass.PayForDataService(service_id=service_id,
                                                         phone_no=phone_no,
                                                         variation_code=variation_code)
                 
@@ -208,7 +207,7 @@ class VtuServicesView(APIView):
             if service_type == 'ELECTRICITY':
                 meter_type=request.data.get('meter_type')
                 meter_no=str(request.data.get('meter_no')).strip()
-                res=VtuServicesUtils.PayForElectricityService(billers_code=meter_no,
+                res=VtuPass.PayForElectricityService(billers_code=meter_no,
                                                               service_id=service_id,variation_code=meter_type,
                                                               amount=amount,phone_no=phone_no)
                 vt_request_id=res.get('requestId')
@@ -263,7 +262,7 @@ class VerifyMeterNumberView(APIView):
 
         try:
 
-            response=VtuServicesUtils.VerifyMeterNumber(billers_code=meter_no,
+            response=VtuPass.VerifyMeterNumber(billers_code=meter_no,
                                                         service_id=service_id,
                                                         service_type=service_type
                                                         ) 
