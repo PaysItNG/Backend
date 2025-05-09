@@ -156,9 +156,9 @@ class SwapCurrencyWalletFunds(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
     def get(self,request):
-      from_currency=str(request.data.get('from_currency')).strip()
-      to_currency=str(request.data.get('to_currency')).strip()
-      amount=Decimal(request.data.get('amount'))
+      from_currency=str(request.GET.get('from_currency')).strip()
+      to_currency=str(request.GET.get('to_currency')).strip()
+      amount=Decimal(request.GET.get('amount'))
 
       currency=StripePaymentUtils.exchange_conversion(to_curr=to_currency,
                                                       from_curr=from_currency,
@@ -185,19 +185,31 @@ class SwapCurrencyWalletFunds(APIView):
             wallet,_=Wallet.objects.get_or_create(user=request.user)
 
             if from_currency == 'NGN' and to_currency == 'USD':
-                wallet.balance-=amount
-                wallet.usd_balance+=converted_amount
-                wallet.save()
-                return Response({
-                    'data':WalletSerializer(wallet).data,'swapped':True}, status=status.HTTP_200_OK)
+                if wallet.balance >= amount:
+                    wallet.balance-=amount
+                    wallet.usd_balance+=converted_amount
+                    wallet.save()
+                    return Response({
+                        'data':WalletSerializer(wallet).data,'swapped':True}, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':False,'message':"insufficient funds"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+                
             elif from_currency == 'USD' and to_currency =='NGN':
-                wallet.usd_balance-=amount
-                wallet.balance+=converted_amount
-                wallet.save()
-                return Response({
-                    'data':WalletSerializer(wallet).data,
-                    'swapped':True
-                }, status=status.HTTP_200_OK)
+                if wallet.usd_balance>=amount:
+                    wallet.usd_balance-=amount
+                    wallet.balance+=converted_amount
+                    wallet.save()
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':True
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':False,'message':"insufficient funds"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
             else:
                 return Response({
                     'data':{},
