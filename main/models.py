@@ -268,7 +268,9 @@ class Wallet(models.Model):
     ('EUR', 'Euro'),]
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
     wallet_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00) #NAIRA BALANCE
+    usd_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    eur_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='NGN')
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)

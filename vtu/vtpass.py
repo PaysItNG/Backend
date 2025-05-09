@@ -59,20 +59,33 @@ post_req_headers={
 
 
 
-class VtuServicesUtils():
-    
 
-    def GetServiceVariations(service_id):
-        url=f'{base_url}service-variations?serviceID={service_id}'
+
+class VtuServicesUtils():
+
+
+    def __init__(self):
+        self.url=f'{base_url}pay'
+
+    def extractDataSize(self,arr):
+        # print(arr)
+        units=['mb','gb']
+        for unit in units:
+            obj=[i for i, val in enumerate(arr) if unit.upper() in val ]
+            if len(obj) > 0:
+                return arr[obj[0]]
+            
         
 
+    def GetServiceVariations(self,service_id):
+        url=f'{base_url}service-variations?serviceID={service_id}'
         res=requests.get(url=url,headers=get_req_headers)
-
-        # print(res.json())
 
         return res.json()
     
-    def PayForAirtimeService(service_id,amount,phone_no):
+
+
+    def PayForAirtimeService(self,service_id,amount,phone_no):
          
         request_id=generate_vtu_request_id(10)
         
@@ -83,14 +96,16 @@ class VtuServicesUtils():
             'phone':phone_no
 
         }
-        url=f'{base_url}pay'
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
 
         # print(res.json())
         return res.json()
 
 
-    def PayForDataService(service_id,phone_no,variation_code):
+
+
+    def PayForDataService(self,service_id,phone_no,variation_code):
          
         request_id=generate_vtu_request_id(10)
         
@@ -102,14 +117,16 @@ class VtuServicesUtils():
             'variation_code':variation_code
 
         }
-        url=f'{base_url}pay'
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
 
         return res.json()
     
 
 
-    def VerifyMeterNumber(billers_code,service_id,service_type='prepaid'):
+
+
+    def VerifyMeterNumber(self,billers_code,service_id,service_type='prepaid'):
         url=f'{base_url}merchant-verify'
         payload={
             'billersCode':int(billers_code),
@@ -121,11 +138,12 @@ class VtuServicesUtils():
         return res.json()
     
 
+
+
     
-    def PayForElectricityService(billers_code,service_id,phone_no,amount,variation_code='prepaid'):
+    def PayForElectricityService(self,billers_code,service_id,phone_no,amount,variation_code='prepaid'):
 
         request_id=generate_vtu_request_id(10)
-        url=f'{base_url}pay'
         
         payload={
             'request_id':request_id,
@@ -136,5 +154,25 @@ class VtuServicesUtils():
             'amount':amount
 
         }
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        return res.json()
+    
+
+    def VerifySmartCardNumber(self,card_number,service_id):
+        url='https://sandbox.vtpass.com/api/merchant-verify'
+        
+        payload={
+            'billersCode':card_number,
+            'serviceID':service_id
+        }
+
+
         res=requests.post(url=url,headers=post_req_headers,data=payload)
         return res.json()
+    
+    def PayForTvService(self):
+        request_id=generate_vtu_request_id(10)
+        url=f'{self.url}pay'
+    
+
+

@@ -23,7 +23,7 @@ def extract_data_qty(string):
     else:
         return None
 
-def nomalise_data_cost(price):
+def normalise_data_cost(price):
     origin_price = price /data_percentage_add
     return price-round(origin_price,1)
 
@@ -156,7 +156,7 @@ def extract_data_qty(string):
     else:
         return None
 
-def nomalise_data_cost(price):
+def normalise_data_cost(price):
     origin_price = price /data_percentage_add
     return price-round(origin_price,1)
 

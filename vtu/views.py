@@ -14,7 +14,11 @@ import decimal
 from main.serializers import *
 from . import gsubs
 
+
+
 # Create your views here.
+
+VtuPass=VtuServicesUtils()
 def create_transaction_instance(user,payment_type,transaction_type,status,amount,description,vt_request_id):
     transaction=Transaction.objects.create( user=user,payment_type=payment_type,
                                                             transaction_type=transaction_type,
@@ -49,32 +53,61 @@ class ValidateNumberView(APIView):
     
 
 
-class AirtimeDataVariationService(APIView):
+class VtuServicesView(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
     def get(self,request):
-        service_id=request.data.get('service_id')
+        service_id=request.GET.get('service_id')
+        service_type=str(request.GET.get('service_type')).upper()
         try:
-        
-            res=VtuServicesUtils.GetServiceVariations(service_id=service_id)
-            res2 = gsubs.fetch_data_plans(service_id)
-            for item in res['content']['variations']:
-                if '30 days' in str(item['name']).lower():
-                    item['duration']='monthly'
-                elif 'month' in str(item['name']).lower():
-                    item['duration']='monthly'
-                elif 'week' in  str(item['name']).lower():
-                    item['duration']='weekly'
-                else:
+            
+            if service_type == 'TV':
+                res=VtuPass.GetServiceVariations(service_id=service_id)
+                return Response({
+                'data':res,
+                    }, status=status.HTTP_200_OK)
+            if service_type == 'DATA':
 
-                    item['duration']='daily'
-            response_data  ={
-                "provider1":res,
-                "provider2":res2
-            }
-            return Response({
-                'data':response_data,
-            }, status=status.HTTP_200_OK)
+                res2 = gsubs.fetch_data_plans(service_id)
+                
+                res=VtuPass.GetServiceVariations(service_id=f'{service_id}-data')
+
+                for item in res['content']['variations']:
+                    item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
+                    item['provider']='VTPASS'
+                    item['plan_id']=str(item['variation_code']).strip()
+                    if '30 days' in str(item['name']).lower():
+                        item['duration']= 'monthly'
+                        size=item['name'].split(' ')
+                        item['qty']=VtuPass.extractDataSize(size)
+                        
+                    elif 'month' in str(item['name']).lower():
+                        item['duration']='monthly'
+                        size=item['name'].split(' ')
+                        item['qty']=VtuPass.extractDataSize(size)
+                        
+                    
+                    elif 'week' in  str(item['name']).lower():
+                        item['duration']='weekly'
+                        size=item['name'].split(' ')
+                        item['qty']=VtuPass.extractDataSize(size)
+                    else:
+
+                        item['duration']='daily'
+                        size=item['name'].split(' ')
+                        item['qty']=VtuPass.extractDataSize(size)
+                for item in res2:
+                    item['provider']='GSUBS'
+
+                response_data  ={
+                    "provider1":res,
+                    "provider2":res2
+                }
+                
+                return Response({
+                    'data':response_data,
+                }, status=status.HTTP_200_OK)
+            
         except Exception as e:
             return Response({
                 'message':'an error occured' + str(e),
@@ -92,11 +125,9 @@ class AirtimeDataVariationService(APIView):
         try:
             if service_type =='AIRTIME':
                 amount=request.data.get('amount')
-                res =VtuServicesUtils.PayForAirtimeService(service_id=service_id,
+                res =VtuPass.PayForAirtimeService(service_id=service_id,
                                                         amount=amount,
                                                         phone_no=phone_no)
-                
-
                 
                 vt_request_id=res.get('requestId')
                 unit_price=res['content']['transactions']['unit_price']
@@ -135,7 +166,7 @@ class AirtimeDataVariationService(APIView):
 
                 variation_code=request.data.get('variation_code')
                 variation_amount=request.data.get('variation_amount')
-                res =VtuServicesUtils.PayForDataService(service_id=service_id,
+                res =VtuPass.PayForDataService(service_id=service_id,
                                                         phone_no=phone_no,
                                                         variation_code=variation_code)
                 
@@ -171,6 +202,49 @@ class AirtimeDataVariationService(APIView):
 
                 else:
                     res['data']={}
+
+
+            if service_type == 'ELECTRICITY':
+                meter_type=request.data.get('meter_type')
+                meter_no=str(request.data.get('meter_no')).strip()
+                res=VtuPass.PayForElectricityService(billers_code=meter_no,
+                                                              service_id=service_id,variation_code=meter_type,
+                                                              amount=amount,phone_no=phone_no)
+                vt_request_id=res.get('requestId')
+                unit_price=res['content']['transactions']['unit_price']
+
+                if res['content']['transactions']['status'] == 'delivered':
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='completed',
+                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful',
+                        vt_request_id=vt_request_id
+                    )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'pending':
+                    transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,
+                        transaction_type=transaction_type,status='pending',
+                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending',
+                        vt_request_id=vt_request_id
+                    )
+                    res['data']=TransactionSerializer(transaction).data
+
+                elif res['content']['transactions']['status'] == 'failed':
+                    transaction=create_transaction_instance(
+                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                    status='failed', amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed',
+                    vt_request_id=vt_request_id
+                                        )
+                    res['data']=TransactionSerializer(transaction).data
+
+                else:
+                    res['data']={}
+
+
+            if service_type == 'TV':
+                pass
             return Response({'data':res}, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -188,7 +262,7 @@ class VerifyMeterNumberView(APIView):
 
         try:
 
-            response=VtuServicesUtils.VerifyMeterNumber(billers_code=meter_no,
+            response=VtuPass.VerifyMeterNumber(billers_code=meter_no,
                                                         service_id=service_id,
                                                         service_type=service_type
                                                         ) 
@@ -214,69 +288,6 @@ class VerifyMeterNumberView(APIView):
 
 
 
-
-class PayUtilityVariationService(APIView):
-    permission_classes=[IsAuthenticated]
-    authentication_classes=[JWTAuthentication]
-    def post(self,request):
-        service_type=str(request.data.get('service_type')).upper()
-        service_id=request.data.get('service_id')
-        meter_type=request.data.get('meter_type')
-        meter_no=str(request.data.get('meter_no')).strip()
-        
-        
-        phone_no=request.data.get('phone_no')
-        response={}
-        payment_type='debit',
-        transaction_type='subscription'
-        amount=request.data.get('amount')
-
-        try:
-            if service_type == 'ELECTRICITY':
-                res=VtuServicesUtils.PayForElectricityService(billers_code=meter_no,
-                                                              service_id=service_id,variation_code=meter_type,
-                                                              amount=amount,phone_no=phone_no)
-                vt_request_id=res.get('requestId')
-                unit_price=res['content']['transactions']['unit_price']
-
-                if res['content']['transactions']['status'] == 'delivered':
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful',
-                        vt_request_id=vt_request_id
-                    )
-                    response['data']=TransactionSerializer(transaction).data
-
-                elif res['content']['transactions']['status'] == 'pending':
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='pending',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending',
-                        vt_request_id=vt_request_id
-                    )
-                    response['data']=TransactionSerializer(transaction).data
-
-                elif res['content']['transactions']['status'] == 'failed':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed',
-                    vt_request_id=vt_request_id
-                                        )
-                    response['data']=TransactionSerializer(transaction).data
-
-                else:
-                    response['data']={}
-            return Response({'data':response}, status=status.HTTP_200_OK)
-                
-
-
-                
-
-
-        except Exception as e:
-            return Response({'data':f'An error occured {e} with invalid parameters'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
 
 
 
