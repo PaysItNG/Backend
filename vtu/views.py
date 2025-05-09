@@ -218,16 +218,18 @@ class VtuServicesView(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful',
+                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
+
+
 
                 elif res['content']['transactions']['status'] == 'pending':
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='pending',
-                        amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending',
+                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
@@ -235,7 +237,7 @@ class VtuServicesView(APIView):
                 elif res['content']['transactions']['status'] == 'failed':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed',
+                    status='failed', amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
