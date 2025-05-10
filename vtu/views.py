@@ -74,7 +74,8 @@ class VtuServicesView(APIView):
 
                 for item in response['content']['variations']:
                     new_item={}
-                    new_item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
+                    # new_item['actual_price']=item['variation_amount']
+                    new_item['price']=(float(item['variation_amount'])*gsubs.data_percentage_add)+float(item['variation_amount'])
                     new_item['provider']='VTPASS'
                     new_item['plan_id']=str(item['variation_code']).strip()
                     if '30 days' in str(item['name']).lower():
@@ -98,6 +99,8 @@ class VtuServicesView(APIView):
                         size=item['name'].split(' ')
                         new_item['qty']=VtuPass.extractDataSize(size)
                     res.append(new_item)
+
+                    
                 for item in res2:
                     item['provider']='GSUBS'
 
@@ -130,7 +133,7 @@ class VtuServicesView(APIView):
         transaction_type='subscription',
         try:
             if service_type =='AIRTIME':
-                amount=request.data.get('amount')
+                amount=request.data.get('price')
                 res =VtuPass.PayForAirtimeService(service_id=service_id,
                                                         amount=amount,
                                                         phone_no=phone_no)
@@ -143,15 +146,19 @@ class VtuServicesView(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} Airtime Top-up successful',
+                        amount=unit_price,description=f'{str(amount)} Airtime Top-up successful',
                         vt_request_id=vt_request_id
                     )
+
+                    wallet=Wallet.objects.get(user=request.user)
+                    wallet.balance-=round(decimal.Decimal(amount),2)
+                    wallet.save()
                     res['data']=TransactionSerializer(transaction).data
 
                 elif res['content']['transactions']['status'] == 'pending':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='pending', amount=unit_price,description=f'{str(unit_price)} Airtime Top-up pending',
+                    status='pending', amount=unit_price,description=f'{str(amount)} Airtime Top-up pending',
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
@@ -159,7 +166,7 @@ class VtuServicesView(APIView):
                 elif res['content']['transactions']['status'] == 'failed':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(unit_price)} Airtime Top-up failed',
+                    status='failed', amount=unit_price,description=f'{str(amount)} Airtime Top-up failed',
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
@@ -170,22 +177,27 @@ class VtuServicesView(APIView):
             if service_type =='DATA':
 
 
-                variation_code=request.data.get('variation_code')
-                variation_amount=request.data.get('variation_amount')
+                variation_code=request.data.get('plan_id')
+                amount=request.data.get('price')
+                
                 res =VtuPass.PayForDataService(service_id=service_id,
                                                         phone_no=phone_no,
-                                                        variation_code=variation_code)
+                                                        variation_code=variation_code,amount=amount)
+         
                 
                 vt_request_id=res.get('requestId')
                 unit_price=res['content']['transactions']['unit_price']
                 
 
                 if res['content']['transactions']['status'] == 'delivered':
-                    
+
+                    wallet=Wallet.objects.get(user=request.user)
+                    wallet.balance-=round(decimal.Decimal(amount),2)
+                    wallet.save()
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase successful',
+                        amount=unit_price,description=f'{str(amount)} Data Bundle purchase successful',
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
@@ -193,7 +205,7 @@ class VtuServicesView(APIView):
                 elif res['content']['transactions']['status'] == 'pending':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='pending', amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase pending',
+                    status='pending', amount=unit_price,description=f'{str(amount)} Data Bundle purchase pending',
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
@@ -201,7 +213,7 @@ class VtuServicesView(APIView):
                 elif res['content']['transactions']['status'] == 'failed':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase failed',
+                    status='failed', amount=unit_price,description=f'{str(amount)} Data Bundle purchase failed',
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
@@ -224,7 +236,7 @@ class VtuServicesView(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
+                        amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
@@ -235,7 +247,7 @@ class VtuServicesView(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='pending',
-                        amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
+                        amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
@@ -243,7 +255,7 @@ class VtuServicesView(APIView):
                 elif res['content']['transactions']['status'] == 'failed':
                     transaction=create_transaction_instance(
                     user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f"{str(unit_price)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
+                    status='failed', amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
                     vt_request_id=vt_request_id
                                         )
                     res['data']=TransactionSerializer(transaction).data
