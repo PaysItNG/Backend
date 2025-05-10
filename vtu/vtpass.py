@@ -114,7 +114,7 @@ class VtuServicesUtils():
             'request_id':request_id,
             'serviceID':service_id,
             'billersCode':phone_no,
-            'phone':int(phone_no),
+            'phone':str(phone_no).strip(),
             'variation_code':variation_code,
             'amount':float(amount)/1.5
 
@@ -151,7 +151,7 @@ class VtuServicesUtils():
             'request_id':request_id,
             'serviceID':service_id,
             'billersCode':int(billers_code),
-            'phone':int(phone_no),
+            'phone':str(phone_no),
             'variation_code':variation_code,
             'amount':amount
 

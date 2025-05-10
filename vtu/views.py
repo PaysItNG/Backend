@@ -204,7 +204,7 @@ class VtuServicesView(APIView):
                     transaction=create_transaction_instance(
                         user=request.user, payment_type=payment_type,
                         transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(amount)} Data Bundle purchase successful',
+                        amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase successful',
                         vt_request_id=vt_request_id
                     )
                     res['data']=TransactionSerializer(transaction).data
