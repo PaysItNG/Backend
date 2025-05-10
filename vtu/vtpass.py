@@ -74,8 +74,7 @@ class VtuServicesUtils():
             obj=[i for i, val in enumerate(arr) if unit.upper() in val ]
             if len(obj) > 0:
                 return arr[obj[0]]
-            # else:
-            #     return str(0)
+            
             
         
 
@@ -107,7 +106,7 @@ class VtuServicesUtils():
 
 
 
-    def PayForDataService(self,service_id,phone_no,variation_code):
+    def PayForDataService(self,service_id,phone_no,variation_code,amount):
          
         request_id=generate_vtu_request_id(10)
         
@@ -116,7 +115,8 @@ class VtuServicesUtils():
             'serviceID':service_id,
             'billersCode':phone_no,
             'phone':int(phone_no),
-            'variation_code':variation_code
+            'variation_code':variation_code,
+            'amount':float(amount)/1.5
 
         }
         
