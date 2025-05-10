@@ -57,7 +57,7 @@ class VtuServicesView(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
     def get(self,request):
-        service_id=request.GET.get('service_id')
+        service_id=str(request.GET.get('service_id')).strip()
         service_type=str(request.GET.get('service_type')).upper()
         try:
             
@@ -99,13 +99,17 @@ class VtuServicesView(APIView):
                 for item in res2:
                     item['provider']='GSUBS'
 
-                response_data  ={
-                    "provider1":res,
-                    "provider2":res2
-                }
+                providers=res['content']['variations']+res2
+                
+                sorted_data=sorted(providers,key=lambda x: (x['price'],x['qty']=='null'))
+                
+                # response_data  ={
+                #     "provider1":res,
+                #     "provider2":res2
+                # }
                 
                 return Response({
-                    'data':response_data,
+                    'data':sorted_data,
                 }, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -115,8 +119,8 @@ class VtuServicesView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
     def post(self,request):
-        service_type=str(request.data.get('service_type')).upper()
-        service_id=request.data.get('service_id')
+        service_type=str(request.data.get('service_type')).strip().upper()
+        service_id=str(request.data.get('service_id')).strip()
         
         phone_no=request.data.get('phone_no')
         res={}
