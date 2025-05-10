@@ -78,9 +78,11 @@ class VtuServicesView(APIView):
                     new_item['price']=(float(item['variation_amount'])*gsubs.data_percentage_add)+float(item['variation_amount'])
                     new_item['provider']='VTPASS'
                     new_item['plan_id']=str(item['variation_code']).strip()
+                    new_item['name']=item['name']
                     if '30 days' in str(item['name']).lower():
                         new_item['duration']= 'monthly'
                         size=item['name'].split(' ')
+                        
                         new_item['qty']=VtuPass.extractDataSize(size)
                         
                     elif 'month' in str(item['name']).lower():
@@ -93,6 +95,11 @@ class VtuServicesView(APIView):
                         new_item['duration']='weekly'
                         size=item['name'].split(' ')
                         new_item['qty']=VtuPass.extractDataSize(size)
+
+                    elif 'year' in  str(item['name']).lower():
+                        new_item['duration']='1 year'
+                        size=item['name'].split(' ')
+                        new_item['qty']=VtuPass.extractDataSize(size)
                     else:
 
                         new_item['duration']='daily'
@@ -100,7 +107,7 @@ class VtuServicesView(APIView):
                         new_item['qty']=VtuPass.extractDataSize(size)
                     res.append(new_item)
 
-                    
+
                 for item in res2:
                     item['provider']='GSUBS'
 
