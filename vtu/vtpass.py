@@ -69,7 +69,7 @@ class VtuServicesUtils():
 
     def extractDataSize(self,arr):
         # print(arr)
-        units=['mb','gb']
+        units=['mb','gb','tb']
         for unit in units:
             obj=[i for i, val in enumerate(arr) if unit.upper() in val ]
             if len(obj) > 0:
