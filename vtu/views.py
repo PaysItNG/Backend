@@ -69,37 +69,39 @@ class VtuServicesView(APIView):
             if service_type == 'DATA':
 
                 res2 = gsubs.fetch_data_plans(service_id)
-                
-                res=VtuPass.GetServiceVariations(service_id=f'{service_id}-data')
+                res=[]
+                response=VtuPass.GetServiceVariations(service_id=f'{service_id}-data')
 
-                for item in res['content']['variations']:
-                    item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
-                    item['provider']='VTPASS'
-                    item['plan_id']=str(item['variation_code']).strip()
+                for item in response['content']['variations']:
+                    new_item={}
+                    new_item['price']=float(item['variation_amount'])*gsubs.data_percentage_add
+                    new_item['provider']='VTPASS'
+                    new_item['plan_id']=str(item['variation_code']).strip()
                     if '30 days' in str(item['name']).lower():
-                        item['duration']= 'monthly'
+                        new_item['duration']= 'monthly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuPass.extractDataSize(size)
+                        new_item['qty']=VtuPass.extractDataSize(size)
                         
                     elif 'month' in str(item['name']).lower():
-                        item['duration']='monthly'
+                        new_item['duration']='monthly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuPass.extractDataSize(size)
+                        new_item['qty']=VtuPass.extractDataSize(size)
                         
                     
                     elif 'week' in  str(item['name']).lower():
-                        item['duration']='weekly'
+                        new_item['duration']='weekly'
                         size=item['name'].split(' ')
-                        item['qty']=VtuPass.extractDataSize(size)
+                        new_item['qty']=VtuPass.extractDataSize(size)
                     else:
 
-                        item['duration']='daily'
+                        new_item['duration']='daily'
                         size=item['name'].split(' ')
-                        item['qty']=VtuPass.extractDataSize(size)
+                        new_item['qty']=VtuPass.extractDataSize(size)
+                    res.append(new_item)
                 for item in res2:
                     item['provider']='GSUBS'
 
-                providers=res['content']['variations']+res2
+                providers=res+res2
                 
                 sorted_data=sorted(providers,key=lambda x: (x['price'],x['qty']=='null'))
                 
