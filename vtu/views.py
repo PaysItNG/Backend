@@ -70,6 +70,7 @@ class AirtimeDataVariationService(APIView):
                 else:
 
                     item['duration']='daily'
+                   
             response_data  ={
                 "provider1":res,
                 "provider2":res2

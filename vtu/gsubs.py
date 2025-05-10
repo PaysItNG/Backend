@@ -17,6 +17,18 @@ headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
+returned_data= [
+            {
+                "displayName": "1GB - 7days",
+                "value": "166",
+                "price": 715,
+                "service": "mtn_sme",
+                "name": "MTN-SME-Data-",
+                "qty": "1GB"
+            },
+ ]
+            
+
 def extract_data_qty(string):
     parts = string.split('-')
     if len(parts) > 1:
