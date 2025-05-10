@@ -74,6 +74,8 @@ class VtuServicesUtils():
             obj=[i for i, val in enumerate(arr) if unit.upper() in val ]
             if len(obj) > 0:
                 return arr[obj[0]]
+            # else:
+            #     return str(0)
             
         
 
