@@ -4,6 +4,7 @@ from django.conf import settings
 from datetime import datetime
 import string
 import random
+from .utils import extract_size_name, add_commision
 
 def generate_vtu_request_id(length):
     char=string.ascii_lowercase+string.digits
@@ -79,10 +80,25 @@ class VtuServicesUtils():
         
 
     def GetServiceVariations(self,service_id):
-        url=f'{base_url}service-variations?serviceID={service_id}'
+        url=f'{base_url}service-variations?serviceID={service_id}-data'
         res=requests.get(url=url,headers=get_req_headers)
-
-        return res.json()
+        response = res.json()
+        plans =[]
+        for item in response['content']['variations']:
+                    new_item={}
+                    new_item['price']=add_commision(float(item['variation_amount']))
+                    new_item['provider_price'] = float(item['variation_amount'])#nomal_amount
+                    new_item['provider']='VTPASS'
+                    new_item['plan_id']=str(item['variation_code']).strip()
+                    #new_item['slug']=item['name']
+                    new_item['service_id'] =service_id
+                    new_item['network']=service_id.upper()
+                    new_item['name']=item['name']
+                    duration,qty = extract_size_name(item['name'])
+                    new_item['duration'] =duration
+                    new_item['qty'] =qty
+                    plans.append(new_item)
+        return plans
     
 
 
@@ -103,26 +119,49 @@ class VtuServicesUtils():
         # print(res.json())
         return res.json()
 
-
-
-
-    def PayForDataService(self,service_id,phone_no,variation_code,amount):
-         
-        request_id=generate_vtu_request_id(10)
-        
+    def verify_transaction_status(self,request_id):
         payload={
             'request_id':request_id,
-            'serviceID':service_id,
-            'billersCode':phone_no,
-            'phone':str(phone_no).strip(),
-            'variation_code':variation_code,
-            'amount':float(amount)/1.5
-
         }
-        
-        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        try:
+            res=requests.post(url=f'{base_url}/requery/',headers=post_req_headers,data=payload)
+            res =res.json()
+            if res['content']['transactions']['status'] == 'delivered':
+                return True
+            return False
+        except Exception:
+            return False
 
-        return res.json()
+        
+
+
+    def PayForDataService(self,data):        
+        payload={
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':data['phone_no'],
+            'phone':data['phone_no'],
+            'variation_code':data['plan_id'],
+            'amount': float(data['provider_price'])
+        }
+        try:
+            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res =res.json()
+            print(res)
+            status ='success'
+            if res['content']['transactions']['status'] == 'delivered':
+                status ="success"
+            elif res['content']['transactions']['status'] == 'pending':
+                status='pending'
+            elif res['content']['transactions']['status'] == 'failed':
+                status='failed'
+        
+            else:
+                status = "failed"
+
+            return status
+        except Exception as e:
+            return "failed"
     
 
 
