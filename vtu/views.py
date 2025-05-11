@@ -103,6 +103,7 @@ class VtuServicesView(APIView):
         res={}
         payment_type='debit',
         transaction_type='subscription',
+        data = request.data
         try:
             if service_type =='AIRTIME':
                 amount=request.data.get('price')
@@ -146,13 +147,12 @@ class VtuServicesView(APIView):
                 else:
                     res['data']={}
 
-            if service_type =='DATA':
+            elif service_type =='DATA':
                 vtpas = VtuServicesUtils()
                 providers_dict={
                     "GSUB":gsubs.buy_data,
                     "VTPASS":vtpas.PayForDataService,
                 }
-                data = request.data
                 wallet=Wallet.objects.get(user=request.user)
                 # wallet.balance+= 2000
                 # wallet.save()
@@ -180,10 +180,9 @@ class VtuServicesView(APIView):
                             {'data':{'status':response,"message":''}}, status = status.HTTP_400_BAD_REQUEST)
                 else:
                     return Response(
-                        {'data':{'status':"failed",'message':'Insufficient balance'}}, status = status.HTTP_400_BAD_REQUEST
-                    )
+                        {'data':{'status':"failed",'message':'Insufficient balance'}}, status = status.HTTP_400_BAD_REQUEST)
             
-            if service_type =="STATUS"# check status of pending transactions and credit users
+            elif service_type == "STATUS": #check status of pending transactions and credit users
                 if service_id=="DATA":
                     try:
                         transaction = Transaction.objects.get(reference_id=data['reference_id'])
@@ -195,16 +194,17 @@ class VtuServicesView(APIView):
                         status_result = check_func(request_id=transaction.reference_id)
                         if status_result == 'failed':
                             return handle_failed_transaction(request.user, transaction)
-                        if status_result == 'success':
+                        elif status_result == 'success':
                             transaction.status="completed"
                             transaction.save()
                             return Response({'detail': 'Transaction succeeded!'}, status=status.HTTP_202_ACCEPTED)
 
-                        elif status_result=="pending":
+                        else:
                             return Response({'detail': 'Transaction is still pending '}, status=status.HTTP_202_ACCEPTED)
-                    
+                else:
+                    return Response("invalid service_id on status check")    
   
-            if service_type == 'ELECTRICITY':
+            elif service_type == 'ELECTRICITY':
                 amount=request.data.get('amount')
                 meter_type=request.data.get('meter_type')
                 meter_no=str(request.data.get('meter_no')).strip()
@@ -246,7 +246,7 @@ class VtuServicesView(APIView):
                     res['data']={}
 
 
-            if service_type == 'TV':
+            elif service_type == 'TV':
                 pass
             return Response({'data':res}, status=status.HTTP_200_OK)
 
