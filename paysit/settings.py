@@ -39,7 +39,7 @@ cloudinary.config(
 SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True#env('DEBUG')
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
@@ -259,6 +259,9 @@ VTPASS_TEST_SECRET=env("VTpass_test_SecretKey").strip()
 
 GSUB_KEY = env("GSUB_Key").strip()
 
+
+DATA_DISCOUNT=0.5
+
 CORS_ALLOWED_ORIGINS = [
     # "https://backend-hr0w.onrender.com",
     "http://localhost:3000"
@@ -293,3 +296,7 @@ CLOUDINARY_STORAGE = {
     'API_KEY':'767488432441825',
     'API_SECRET':'alDZdJ_w_UWNOOZrwWpMl74tFNk'
 }
+
+VIRTUAL_CARD_PERCENTAGE=10
+VTU_PERCENTAGE=10
+

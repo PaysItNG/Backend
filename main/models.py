@@ -28,11 +28,13 @@ def generateWalletId(length)->str:
 
     return token
 
-def generateidentifier(length)->str:
-    char=string.ascii_lowercase+string.digits
-    token="".join(random.choice(char) for _ in range(length))
 
-    return token
+
+def generateidentifier(length)->str:
+     char=string.ascii_lowercase+string.digits
+     token="".join(random.choice(char) for _ in range(length))
+     return token
+
 
 
 def generate_otp(length):
@@ -268,7 +270,9 @@ class Wallet(models.Model):
     ('EUR', 'Euro'),]
     user=models.OneToOneField(User,on_delete=models.CASCADE,null=True,blank=True)
     wallet_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00) #NAIRA BALANCE
+    usd_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    eur_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='NGN')
     is_active=models.BooleanField(default=True)
     date_created=models.DateTimeField(auto_now_add=True,)
@@ -307,7 +311,11 @@ class BusinessTerminal(models.Model):
     user=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE)
     business=models.ForeignKey(Business,null=True,blank=True, on_delete=models.CASCADE)
    
-
+def generate_unique_identifier():
+    while True:
+        token = generateidentifier(10)
+        if not Transaction.objects.filter(reference_id=token).exists():
+            return token
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
@@ -326,6 +334,7 @@ class Transaction(models.Model):
    
         ('processing', 'processing'),
       
+        ('refunded', 'refunded')
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
@@ -341,16 +350,15 @@ class Transaction(models.Model):
                                    null=True,blank=True)
     otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
-    reference_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    reference_id = models.CharField(max_length=10, unique=True, editable=False,default=generate_unique_identifier)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
     def save(self,*args,**kwargs):
-        ref_id=generateidentifier(10)
-
+        ref_id = generate_unique_identifier
         debit_transaction_types=['withdrawal','transfer','subscription']
         if self.paystack_data!= None:
             self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
@@ -358,7 +366,6 @@ class Transaction(models.Model):
             self.payment_type='credit'
         else:
             self.payment_type='debit'
-
             
         if self.reference_id == None:
             try:

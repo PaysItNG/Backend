@@ -74,7 +74,7 @@ def APIendpoints(request):
 
              ['virtual-card/',
               ['create/','retrieve/cardholder/','update/cardholder', 'fund/payment/',
-               'ephemeral/keys/','payment/webhook/', 'add/fund/','webhook/',"more/",'authorization/webhook/'],
+               'ephemeral/keys/','payment/webhook/', 'add/naira/','add/dollar/','webhook/',"more/",'authorization/webhook/'],
              ],
 
            
@@ -93,8 +93,14 @@ def APIendpoints(request):
                   'validate/phone-number/','service/variations/','pay/airtime-data/',
                   'verify/meter/','pay/utility/',
               ]
-              ]
+              ],
 
+            [
+                'wallet/',
+                [
+                    'swap/currencies/'
+                ]
+            ]
              
               
              ]

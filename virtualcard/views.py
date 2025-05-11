@@ -63,53 +63,87 @@ def get_user_ip(request):
 class CreateVirtualCardView(APIView):
     permission_classes=[IsAuthenticated]
     authentication_classes=[JWTAuthentication]
-  
+
+    def get(self,request):
+      try:
+          card=Card.objects.get(user=request.user)
+
+          if card.issued == True:
+             return Response({
+                'message':'Card already assigned to user',
+                'issued':True,
+                'created':True
+             },status=status.HTTP_200_OK)
+          else:
+              return Response({
+                'message':'Card not issued Contact support for assistance','issued':False,'created':True
+             },status=status.HTTP_200_OK)
+      
+      except:
+         price=3
+         return Response({
+            'message':'Virtual card cost f"${price}" ','issued':False,'created':False,},status=status.HTTP_200_OK)
+      
+
     def post(self,request,*args,**kwargs):
             ip_addr=get_user_ip(request=request)
-            card,created=Card.objects.get_or_create(user=request.user)
 
- 
-            data = {
-            "type": "individual",
-            "name": f"{request.user.first_name} {request.user.last_name}",
-            "email": f"{request.user.email}",
-            "phone_number": "+18888675322",
-            "billing[address][line1]": "1234 Main Street",
-            "billing[address][city]": "San Francisco",
-            "billing[address][state]": "CA",
-            "billing[address][country]": "US",
-            "billing[address][postal_code]": "94111",
-            "individual[first_name]":request.user.first_name,
-            "individual[last_name]":request.user.last_name,
-            "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-            "individual[card_issuing][user_terms_acceptance][ip]":get_user_ip(request=request),
-            "spending_controls[allowed_categories]" :None,
-            "spending_controls[spending_limits][0][amount]":100000,
-            "spending_controls[spending_limits][0][interval]":'daily',
-            "spending_controls[spending_limits_currency]":'USD',
-            "spending_controls[blocked_merchant_countries][0]":[],
-            "spending_controls[allowed_categories][0]":['general_services'],
-             "spending_controls[allowed_categories][1]":['advertising_services'],
-            
+            price=3
+            try:
+               wallet=Wallet.objects.get(user=request.user)
+               card,_=Card.objects.get_or_create(user=request.user)
 
+               if round(Decimal(price),2) < wallet.usd_balance:
 
-        }
-            
-            if card.issued == True:
-               return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
-            
-            else:
-
-              res=StripePaymentUtils.create_card_holder(data=data)
-  
-              return Response({
-                  'data':res,
-                  'message':'card successfully issued'
+                  data = {
+                  "type": "individual",
+                  "name": f"{request.user.first_name} {request.user.last_name}",
+                  "email": f"{request.user.email}",
+                  "phone_number": "+18888675322",
+                  "billing[address][line1]": "1234 Main Street",
+                  "billing[address][city]": "San Francisco",
+                  "billing[address][state]": "CA",
+                  "billing[address][country]": "US",
+                  "billing[address][postal_code]": "94111",
+                  "individual[first_name]":request.user.first_name,
+                  "individual[last_name]":request.user.last_name,
+                  "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
+                  "individual[card_issuing][user_terms_acceptance][ip]":ip_addr,
+                  "spending_controls[allowed_categories]" :None,
+                  "spending_controls[spending_limits][0][amount]":100000,
+                  "spending_controls[spending_limits][0][interval]":'daily',
+                  "spending_controls[spending_limits_currency]":'USD',
+                  "spending_controls[blocked_merchant_countries][0]":[],
+                  "spending_controls[allowed_categories][0]":['general_services'],
+                  "spending_controls[allowed_categories][1]":['advertising_services'],
                   
 
-                },status=status.HTTP_201_CREATED)
 
+                  }
+                  
+                  if card.issued == True:
+                     return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
+                  
+                  else:
 
+                     res=StripePaymentUtils.create_card_holder(data=data)
+                     byte_array=bytearray(json.dumps(res).encode('utf-8'))
+                     event = stripe.Event.construct_from(json.loads(byte_array), settings.STRIPE_SECRET_KEY)
+                     # print('EVENT ',event)
+      
+                     return Response({
+                           'data':res,
+                           'message':'card successfully issued' },status=status.HTTP_201_CREATED)
+               else:
+
+                  return  Response({
+                        'data':{},
+                        'message':'insufficient USD balance' },status=status.HTTP_406_NOT_ACCEPTABLE)
+               
+            except Exception as e:
+               return  Response({
+                        'data':{},
+                        'message':f'an error occured at {e}' },status=status.HTTP_404_NOT_FOUND)
 
 
 class UpdateCardholderView(APIView):
@@ -164,7 +198,7 @@ class CardHolderRetrieveView(APIView):
 
 
 
-class SwapFundToDollarCard(APIView):
+class AddNairaFundToDollarCard(APIView):
    permission_classes=[IsAuthenticated]
    authentication_classes=[JWTAuthentication]
 
@@ -190,8 +224,8 @@ class SwapFundToDollarCard(APIView):
       
 
    def post(self,request):
-      from_currency=str(request.data.get('from_currency')).strip()
-      to_currency=str(request.data.get('to_currency')).strip()
+      # from_currency=str(request.data.get('from_currency')).strip()
+      # to_currency=str(request.data.get('to_currency')).strip()
       amount=round(Decimal(request.data.get('amount')),2)
       converted_amount=round(Decimal(request.data.get('converted_amount')),2)
       res=StripePaymentUtils.get_paysit_stripe_balance()
@@ -220,7 +254,32 @@ class SwapFundToDollarCard(APIView):
       
 
 
- 
+class AddDollarFundToDollarCard(APIView):
+   def post(self,request):
+      amount=round(Decimal(request.data.get('amount')),2)
+      res=StripePaymentUtils.get_paysit_stripe_balance()
+      issuing_balance=res['issuing']['available'][0].to_dict()
+      wallet=Wallet.objects.get(user=request.user)
+      
+      if wallet.usd_balance < round(issuing_balance['amount']/100,2):
+         card,_=Card.objects.get_or_create(user=request.user)
+
+         if card.issued:
+            if amount <= wallet.usd_balance:
+               card.balance+=amount
+               card.save()
+               return Response({'message':'Card successfully funded','data':Cardserializer(card).data,
+                                'success':True}, status=status.HTTP_200_OK)
+            else:
+               return Response({'message':'Insuffient funds','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+         else:
+            
+            return Response({'message':'Card is not issued,contact support','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+      return Response({'message':'Can\'t fund account at this time, contact support for futher assistance','data':Cardserializer(card).data,
+                                'success':False}, status=status.HTTP_406_NOT_ACCEPTABLE)
    
 
 
@@ -272,12 +331,11 @@ class GenerateEphemeralKeys(APIView):
    def post(self,request,*args,**kwargs):
       
       try:
-        ephemeralKey = stripe.EphemeralKey.create( nonce=request.data.get('nonce'),
+         ephemeralKey = stripe.EphemeralKey.create( nonce=request.data.get('nonce'),
                                         issuing_card=request.data.get('card_id'),
                                         stripe_version='2025-02-24.acacia',
                                     )
-        
-        return Response({
+         return Response({
           'data':ephemeralKey.secret,
           'status':'ok'
         })
@@ -302,21 +360,15 @@ def virtualcard_webhook_view(request):
     return HttpResponse(status=400)
 
   # Handle the event
-
   data={
         'id':event['data']['object']['id'],
-        'spending_controls':event['data']['object']['spending_controls']
-        
+        'spending_controls':event['data']['object']['spending_controls']       
         }
-#   print()
-  
-  user_email=event['data']['object']['email']
-#   print(user_email)
 
-  
+  user_email=event['data']['object']['email']
+
   if event.type == 'issuing_cardholder.created':
-    
-    StripePaymentUtils.create_card(data=data,email=user_email)
+   StripePaymentUtils.create_card(data=data,email=user_email)
 
   if event.type == 'issuing_cardholder.updated':
      StripePaymentUtils.update_card(data=data,email=user_email)
@@ -363,7 +415,6 @@ def payment_webhook_view(request):
 @method_decorator(csrf_exempt, name='dispatch')
 class CardAuthorizationWebhook(View): #Handles all card authorization events when a purchase is made with the card
 
-   
    def post(self,request,*args,**kwargs):
       payload = request.body
       signature = request.headers.get("Stripe-Signature")

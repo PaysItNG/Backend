@@ -30,8 +30,7 @@ class StripePaymentUtils():
 
         url=f'{base_url}/v1/issuing/cardholders'
         res=requests.post(url,headers=headers,data=data)
-        # print(res.json())
-
+       
         return res.json()
 
     @staticmethod

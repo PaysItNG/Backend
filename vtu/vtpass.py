@@ -4,6 +4,7 @@ from django.conf import settings
 from datetime import datetime
 import string
 import random
+from .utils import extract_size_name, add_commision
 
 def generate_vtu_request_id(length):
     char=string.ascii_lowercase+string.digits
@@ -61,29 +62,49 @@ post_req_headers={
 
 
 
-providers ={ #create a service mapper
-            "mtn":"your_desired_service_id ",
-            "airtel":"",
-            "glo":"",
-            "etisalat": ""
-        }
+
+
 class VtuServicesUtils():
-    
 
-    def GetServiceVariations(service_id):
-        
-        service_id = providers[service_id] # use it this way
-        
-        url=f'{base_url}service-variations?serviceID={service_id}'
+
+    def __init__(self):
+        self.url=f'{base_url}pay'
+
+    def extractDataSize(self,arr):
+        # print(arr)
+        units=['mb','gb','tb']
+        for unit in units:
+            obj=[i for i, val in enumerate(arr) if unit.upper() in val ]
+            if len(obj) > 0:
+                return arr[obj[0]]
+            
+            
         
 
+    def GetServiceVariations(self,service_id):
+        url=f'{base_url}service-variations?serviceID={service_id}-data'
         res=requests.get(url=url,headers=get_req_headers)
-
-        # print(res.json())
-
-        return res.json()
+        response = res.json()
+        plans =[]
+        for item in response['content']['variations']:
+                    new_item={}
+                    new_item['price']=add_commision(float(item['variation_amount']))
+                    new_item['provider_price'] = float(item['variation_amount'])#nomal_amount
+                    new_item['provider']='VTPASS'
+                    new_item['plan_id']=str(item['variation_code']).strip()
+                    #new_item['slug']=item['name']
+                    new_item['service_id'] =service_id
+                    new_item['network']=service_id.upper()
+                    new_item['name']=item['name']
+                    duration,qty = extract_size_name(item['name'])
+                    new_item['duration'] =duration
+                    new_item['qty'] =qty
+                    plans.append(new_item)
+        return plans
     
-    def PayForAirtimeService(service_id,amount,phone_no):
+
+
+    def PayForAirtimeService(self,service_id,amount,phone_no):
          
         request_id=generate_vtu_request_id(10)
         
@@ -94,33 +115,61 @@ class VtuServicesUtils():
             'phone':phone_no
 
         }
-        url=f'{base_url}pay'
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
 
         # print(res.json())
         return res.json()
 
-
-    def PayForDataService(service_id,phone_no,variation_code):
-         
-        request_id=generate_vtu_request_id(10)
-        
+    def verify_transaction_status(self,request_id):
         payload={
             'request_id':request_id,
-            'serviceID':service_id,
-            'billersCode':phone_no,
-            'phone':int(phone_no),
-            'variation_code':variation_code
-
         }
-        url=f'{base_url}pay'
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        try:
+            res=requests.post(url=f'{base_url}/requery/',headers=post_req_headers,data=payload)
+            res =res.json()
+            if res['content']['transactions']['status'] == 'delivered':
+                return True
+            return False
+        except Exception:
+            return False
 
-        return res.json()
+        
+
+
+    def PayForDataService(self,data):        
+        payload={
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':data['phone_no'],
+            'phone':data['phone_no'],
+            'variation_code':data['plan_id'],
+            'amount': float(data['provider_price'])
+        }
+        try:
+            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res =res.json()
+            print(res)
+            status ='success'
+            if res['content']['transactions']['status'] == 'delivered':
+                status ="success"
+            elif res['content']['transactions']['status'] == 'pending':
+                status='pending'
+            elif res['content']['transactions']['status'] == 'failed':
+                status='failed'
+        
+            else:
+                status = "failed"
+
+            return status
+        except Exception as e:
+            return "failed"
     
 
 
-    def VerifyMeterNumber(billers_code,service_id,service_type='prepaid'):
+
+
+    def VerifyMeterNumber(self,billers_code,service_id,service_type='prepaid'):
         url=f'{base_url}merchant-verify'
         payload={
             'billersCode':int(billers_code),
@@ -132,20 +181,41 @@ class VtuServicesUtils():
         return res.json()
     
 
+
+
     
-    def PayForElectricityService(billers_code,service_id,phone_no,amount,variation_code='prepaid'):
+    def PayForElectricityService(self,billers_code,service_id,phone_no,amount,variation_code='prepaid'):
 
         request_id=generate_vtu_request_id(10)
-        url=f'{base_url}pay'
         
         payload={
             'request_id':request_id,
             'serviceID':service_id,
             'billersCode':int(billers_code),
-            'phone':int(phone_no),
+            'phone':str(phone_no),
             'variation_code':variation_code,
             'amount':amount
 
         }
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        return res.json()
+    
+
+    def VerifySmartCardNumber(self,card_number,service_id):
+        url='https://sandbox.vtpass.com/api/merchant-verify'
+        
+        payload={
+            'billersCode':card_number,
+            'serviceID':service_id
+        }
+
+
         res=requests.post(url=url,headers=post_req_headers,data=payload)
         return res.json()
+    
+    def PayForTvService(self):
+        request_id=generate_vtu_request_id(10)
+        url=f'{self.url}pay'
+    
+
+
