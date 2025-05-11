@@ -15,7 +15,7 @@ from main.serializers import *
 from . import gsubs
 
 
-
+networks=['mtn','etisalat','glo','airtel']
 # Create your views here.
 
 VtuPass=VtuServicesUtils()
@@ -59,7 +59,7 @@ class VtuServicesView(APIView):
     def get(self,request):
         service_id=str(request.GET.get('service_id')).strip()
         # service_type=str(request.GET.get('service_type')).upper()
-        networks=['mtn','etisalat','glo','airtel']
+        
         try:
 
             if service_id.lower() in networks:
