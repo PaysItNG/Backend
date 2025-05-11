@@ -15,7 +15,7 @@ from main.serializers import *
 from . import gsubs
 
 
-
+networks=['mtn','etisalat','glo','airtel']
 # Create your views here.
 
 VtuPass=VtuServicesUtils()
@@ -58,15 +58,11 @@ class VtuServicesView(APIView):
     authentication_classes=[JWTAuthentication]
     def get(self,request):
         service_id=str(request.GET.get('service_id')).strip()
-        service_type=str(request.GET.get('service_type')).upper()
+        # service_type=str(request.GET.get('service_type')).upper()
+        
         try:
-            
-            if service_type == 'TV':
-                res=VtuPass.GetServiceVariations(service_id=service_id)
-                return Response({
-                'data':res,
-                    }, status=status.HTTP_200_OK)
-            if service_type == 'DATA':
+
+            if service_id.lower() in networks:
 
                 res2 = gsubs.fetch_data_plans(service_id)
                 res=[]
@@ -124,6 +120,17 @@ class VtuServicesView(APIView):
                     'data':sorted_data,
                 }, status=status.HTTP_200_OK)
             
+
+
+            
+            else:
+                res=VtuPass.GetServiceVariations(service_id=service_id)
+                return Response({
+                'data':res,
+                    }, status=status.HTTP_200_OK)
+            
+
+            
         except Exception as e:
             return Response({
                 'message':'an error occured' + str(e),
@@ -138,137 +145,152 @@ class VtuServicesView(APIView):
         res={}
         payment_type='debit',
         transaction_type='subscription',
+        wallet=Wallet.objects.get(user=request.user)
+        amount=request.data.get('price')
         try:
             if service_type =='AIRTIME':
-                amount=request.data.get('price')
-                res =VtuPass.PayForAirtimeService(service_id=service_id,
-                                                        amount=amount,
-                                                        phone_no=phone_no)
                 
-                vt_request_id=res.get('requestId')
-                unit_price=res['content']['transactions']['unit_price']
 
-                if res['content']['transactions']['status'] == 'delivered':
+                if amount <= wallet.balance:
+                    res =VtuPass.PayForAirtimeService(service_id=service_id,
+                                                            amount=amount,
+                                                            phone_no=phone_no)
                     
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(amount)} Airtime Top-up successful',
+                    vt_request_id=res.get('requestId')
+                    unit_price=res['content']['transactions']['unit_price']
+
+                    if res['content']['transactions']['status'] == 'delivered':
+                        
+                        transaction=create_transaction_instance(
+                            user=request.user, payment_type=payment_type,
+                            transaction_type=transaction_type,status='completed',
+                            amount=unit_price,description=f'{str(amount)} Airtime Top-up successful',
+                            vt_request_id=vt_request_id
+                        )
+
+                        wallet=Wallet.objects.get(user=request.user)
+                        wallet.balance-=round(decimal.Decimal(amount),2)
+                        wallet.save()
+                        res['data']=TransactionSerializer(transaction).data
+
+                    elif res['content']['transactions']['status'] == 'pending':
+                        transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                        status='pending', amount=unit_price,description=f'{str(amount)} Airtime Top-up pending',
                         vt_request_id=vt_request_id
-                    )
+                                            )
+                        res['data']=TransactionSerializer(transaction).data
 
-                    wallet=Wallet.objects.get(user=request.user)
-                    wallet.balance-=round(decimal.Decimal(amount),2)
-                    wallet.save()
-                    res['data']=TransactionSerializer(transaction).data
+                    elif res['content']['transactions']['status'] == 'failed':
+                        transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                        status='failed', amount=unit_price,description=f'{str(amount)} Airtime Top-up failed',
+                        vt_request_id=vt_request_id
+                                            )
+                        res['data']=TransactionSerializer(transaction).data
 
-                elif res['content']['transactions']['status'] == 'pending':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='pending', amount=unit_price,description=f'{str(amount)} Airtime Top-up pending',
-                    vt_request_id=vt_request_id
-                                        )
-                    res['data']=TransactionSerializer(transaction).data
-
-                elif res['content']['transactions']['status'] == 'failed':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(amount)} Airtime Top-up failed',
-                    vt_request_id=vt_request_id
-                                        )
-                    res['data']=TransactionSerializer(transaction).data
-
+                    else:
+                        res['data']={}
                 else:
-                    res['data']={}
+                    return Response({
+                        'message':'Insufficient Amount'
+                    }, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             if service_type =='DATA':
 
 
                 variation_code=request.data.get('plan_id')
-                amount=request.data.get('price')
                 
-                res =VtuPass.PayForDataService(service_id=service_id,
-                                                        phone_no=phone_no,
-                                                        variation_code=variation_code,amount=amount)
-         
-                
-                vt_request_id=res.get('requestId')
-                unit_price=res['content']['transactions']['unit_price']
-                
+                if amount <= wallet.balance:
+                    res =VtuPass.PayForDataService(service_id=service_id,
+                                                            phone_no=phone_no,
+                                                            variation_code=variation_code,amount=amount)
+            
+                    
+                    vt_request_id=res.get('requestId')
+                    unit_price=res['content']['transactions']['unit_price']
+                    
 
-                if res['content']['transactions']['status'] == 'delivered':
+                    if res['content']['transactions']['status'] == 'delivered':
 
-                    wallet=Wallet.objects.get(user=request.user)
-                    wallet.balance-=round(decimal.Decimal(amount),2)
-                    wallet.save()
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase successful',
+                        
+                        wallet.balance-=round(decimal.Decimal(amount),2)
+                        wallet.save()
+                        transaction=create_transaction_instance(
+                            user=request.user, payment_type=payment_type,
+                            transaction_type=transaction_type,status='completed',
+                            amount=unit_price,description=f'{str(unit_price)} Data Bundle purchase successful',
+                            vt_request_id=vt_request_id
+                        )
+                        res['data']=TransactionSerializer(transaction).data
+
+                    elif res['content']['transactions']['status'] == 'pending':
+                        transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                        status='pending', amount=unit_price,description=f'{str(amount)} Data Bundle purchase pending',
                         vt_request_id=vt_request_id
-                    )
-                    res['data']=TransactionSerializer(transaction).data
+                                            )
+                        res['data']=TransactionSerializer(transaction).data
 
-                elif res['content']['transactions']['status'] == 'pending':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='pending', amount=unit_price,description=f'{str(amount)} Data Bundle purchase pending',
-                    vt_request_id=vt_request_id
-                                        )
-                    res['data']=TransactionSerializer(transaction).data
+                    elif res['content']['transactions']['status'] == 'failed':
+                        transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                        status='failed', amount=unit_price,description=f'{str(amount)} Data Bundle purchase failed',
+                        vt_request_id=vt_request_id
+                                            )
+                        res['data']=TransactionSerializer(transaction).data
 
-                elif res['content']['transactions']['status'] == 'failed':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f'{str(amount)} Data Bundle purchase failed',
-                    vt_request_id=vt_request_id
-                                        )
-                    res['data']=TransactionSerializer(transaction).data
-
+                    else:
+                        res['data']={}
                 else:
-                    res['data']={}
+                    return Response({
+                        'message':'Insufficient Amount'
+                    }, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
             if service_type == 'ELECTRICITY':
-                amount=request.data.get('amount')
                 meter_type=request.data.get('meter_type')
                 meter_no=str(request.data.get('meter_no')).strip()
-                res=VtuPass.PayForElectricityService(billers_code=meter_no,
-                                                              service_id=service_id,variation_code=meter_type,
-                                                              amount=amount,phone_no=phone_no)
-                vt_request_id=res.get('requestId')
-                unit_price=res['content']['transactions']['unit_price']
+                if amount <= wallet.balance:
+                    res=VtuPass.PayForElectricityService(billers_code=meter_no,
+                                                                service_id=service_id,variation_code=meter_type,
+                                                                amount=amount,phone_no=phone_no)
+                    vt_request_id=res.get('requestId')
+                    unit_price=res['content']['transactions']['unit_price']
+                    if res['content']['transactions']['status'] == 'delivered':
+                        transaction=create_transaction_instance(
+                            user=request.user, payment_type=payment_type,
+                            transaction_type=transaction_type,status='completed',
+                            amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
+                            vt_request_id=vt_request_id
+                        )
+                        res['data']=TransactionSerializer(transaction).data
 
-                if res['content']['transactions']['status'] == 'delivered':
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='completed',
-                        amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Successful",
+
+
+                    elif res['content']['transactions']['status'] == 'pending':
+                        transaction=create_transaction_instance(
+                            user=request.user, payment_type=payment_type,
+                            transaction_type=transaction_type,status='pending',
+                            amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
+                            vt_request_id=vt_request_id
+                        )
+                        res['data']=TransactionSerializer(transaction).data
+
+                    elif res['content']['transactions']['status'] == 'failed':
+                        transaction=create_transaction_instance(
+                        user=request.user, payment_type=payment_type,transaction_type=transaction_type,
+                        status='failed', amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
                         vt_request_id=vt_request_id
-                    )
-                    res['data']=TransactionSerializer(transaction).data
+                                            )
+                        res['data']=TransactionSerializer(transaction).data
 
-
-
-                elif res['content']['transactions']['status'] == 'pending':
-                    transaction=create_transaction_instance(
-                        user=request.user, payment_type=payment_type,
-                        transaction_type=transaction_type,status='pending',
-                        amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Pending",
-                        vt_request_id=vt_request_id
-                    )
-                    res['data']=TransactionSerializer(transaction).data
-
-                elif res['content']['transactions']['status'] == 'failed':
-                    transaction=create_transaction_instance(
-                    user=request.user, payment_type=payment_type,transaction_type=transaction_type,
-                    status='failed', amount=unit_price,description=f"{str(amount)} for {res['content']['transactions']['product_name']} Prepaid unit purchase Failed",
-                    vt_request_id=vt_request_id
-                                        )
-                    res['data']=TransactionSerializer(transaction).data
-
+                    else:
+                        res['data']={}
                 else:
-                    res['data']={}
+                    return Response({
+                        'message':'Insufficient Amount'
+                    }, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
             if service_type == 'TV':
