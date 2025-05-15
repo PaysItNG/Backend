@@ -232,14 +232,15 @@ class VtuServicesView(APIView):
                             {'data':{'status':response,"message":''}}, status = status.HTTP_400_BAD_REQUEST)
                  
                 elif service_type == "STATUS": #check status of pending transactions and credit users
-                    if service_id=="DATA":
-                        try:
+                    try:
                             transaction = Transaction.objects.get(reference_id=data['reference_id'])
-                        except Transaction.DoesNotExist:
-                            return Response({'detail': 'Invalid reference ID'}, status=status.HTTP_400_BAD_REQUEST)
-
+                    except Transaction.DoesNotExist:
+                        return Response({'detail': 'Invalid reference ID'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if service_id.upper() in ["DATA","AIRTIME"]:
+                        
                         # Check both providers
-                        for check_func in [gsubs.verify_transaction_status, VtuPass.verify_transaction_status]:
+                        for check_func in verify_transaction_status:
                             status_result = check_func(request_id=transaction.reference_id)
                             if status_result == 'failed':
                                 return handle_failed_transaction(request.user, transaction)
@@ -250,6 +251,19 @@ class VtuServicesView(APIView):
 
                             else:
                                 return Response({'detail': 'Transaction is still pending '}, status=status.HTTP_202_ACCEPTED)
+                    
+                    elif service_id.upper() in ["TV","ELECTRICITY"]:
+                        status_result=verify_transaction_status[1](request_id=transaction.reference_id)
+                        if status_result == 'failed':
+                                return handle_failed_transaction(request.user, transaction)
+                        elif status_result == 'success':
+                            transaction.status="completed"
+                            transaction.save()
+                            return Response({'detail': 'Transaction succeeded!'}, status=status.HTTP_202_ACCEPTED)
+
+                        else:
+                            return Response({'detail': 'Transaction is still pending '}, status=status.HTTP_202_ACCEPTED)
+                        
                     else:
                         return Response("invalid service_id on status check")    
                     

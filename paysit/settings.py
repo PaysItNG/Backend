@@ -266,7 +266,8 @@ DATA_DISCOUNT=0.5
 
 CORS_ALLOWED_ORIGINS = [
     "https://paysit-khqb.onrender.com",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://paysit-app.onrender.com"
 ]
 
 
