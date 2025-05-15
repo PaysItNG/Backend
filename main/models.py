@@ -311,11 +311,11 @@ class BusinessTerminal(models.Model):
     user=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE)
     business=models.ForeignKey(Business,null=True,blank=True, on_delete=models.CASCADE)
    
-def generate_unique_identifier():
-    while True:
-        token = generateidentifier(10)
-        if not Transaction.objects.filter(reference_id=token).exists():
-            return token
+def generate_unique_identifier()->str:
+    
+    token = generateidentifier(10)
+    if not Transaction.objects.filter(reference_id=token).exists():
+        return token
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
@@ -333,8 +333,7 @@ class Transaction(models.Model):
         ('completed', 'completed'),
    
         ('processing', 'processing'),
-      
-        ('refunded', 'refunded')
+        ('refunded', 'refunded'),
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
@@ -350,7 +349,7 @@ class Transaction(models.Model):
                                    null=True,blank=True)
     otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
-    reference_id = models.CharField(max_length=10, unique=True, editable=False,default=generate_unique_identifier)
+    reference_id = models.CharField(max_length=100, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -358,10 +357,10 @@ class Transaction(models.Model):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
     def save(self,*args,**kwargs):
-        ref_id = generate_unique_identifier
+        ref_id = generate_unique_identifier()
         debit_transaction_types=['withdrawal','transfer','subscription']
         if self.paystack_data!= None:
-            self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
+            self.reference_id=json.loads(self.paystack_data)['data']['reference']
         if self.transaction_type not in debit_transaction_types:
             self.payment_type='credit'
         else:
