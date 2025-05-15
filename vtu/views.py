@@ -141,13 +141,12 @@ class VtuServicesView(APIView):
         service_type=str(request.data.get('service_type')).strip().upper()
         service_id=str(request.data.get('service_id')).strip()
         phone_no=request.data.get('phone_no')
-        
         res={}
-      
         transaction_type='subscription',
         data = request.data
         wallet=self.get_user_wallet(request)
         amount=data['price']
+        verify_transaction_status=[gsubs.verify_transaction_status, VtuPass.verify_transaction_status]
         
 
         if wallet.balance >= decimal.Decimal(float(amount)):
