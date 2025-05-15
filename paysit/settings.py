@@ -265,7 +265,6 @@ GSUB_KEY = env("GSUB_Key").strip()
 DATA_DISCOUNT=0.5
 
 CORS_ALLOWED_ORIGINS = [
-    # "https://backend-hr0w.onrender.com",
     "https://paysit-khqb.onrender.com",
     "http://localhost:3000"
 ]
