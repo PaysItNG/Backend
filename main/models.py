@@ -334,7 +334,7 @@ class Transaction(models.Model):
    
         ('processing', 'processing'),
       
-        ('refunded', 'refunded'),
+        ('refunded', 'refunded')
         ('failed', 'Failed')
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
