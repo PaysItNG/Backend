@@ -115,9 +115,24 @@ class VtuServicesUtils():
         }
         
         res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        try:
+            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res =res.json()
+            print(res)
+            status ='success'
+            if res['content']['transactions']['status'] == 'delivered':
+                status ="success"
+            elif res['content']['transactions']['status'] == 'pending':
+                status='pending'
+            elif res['content']['transactions']['status'] == 'failed':
+                status='failed'
+        
+            else:
+                status = "failed"
 
-        # print(res.json())
-        return res.json()
+            return status
+        except Exception as e:
+            return "failed"
 
     def verify_transaction_status(self,request_id):
         payload={
