@@ -132,6 +132,8 @@ class VtuServicesView(APIView):
                         'data':"provide service_type",
                     }, status=status.HTTP_404_NOT_FOUND)
             
+            
+            
         except Exception as e:
             return Response({
                 'message':'an error occured' + str(e),
