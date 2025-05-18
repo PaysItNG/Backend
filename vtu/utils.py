@@ -8,7 +8,7 @@ def extractDataSize(arr):
     return None
     
     
-def add_commision(price):
+def add_commision(price)->float:
     price=float(price)
     return price+price*(data_percentage_add/100)
 
@@ -22,7 +22,7 @@ def extract_size_name(item):
     if re.search(r'\b\d+\s*(day|days)\b', text) or 'hrs' in text:
         duration = 'daily'
     
-    elif re.search(r'\b\d+\s*(2day|2-days|2Day|2Days)\b', text) or '2 days' in text or '2days' in text:
+    if re.search(r'\b\d+\s*(2day|2-days|2Day|2Days)\b', text) or '2 days' in text or '2days' in text:
         duration = '2 days'
     elif re.search(r'\b\d+\s*(week|weeks|weekly|Weekly)\b', text) or '7days' in text or '7 days' in text:
         duration = 'weekly'

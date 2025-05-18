@@ -4,7 +4,7 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.conf import settings
-from .vtpass import VtuServicesUtils,validate_phonenumber
+from .vtpass import VtuServicesUtils,validate_phonenumber,generate_vtu_request_id
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -16,23 +16,20 @@ from . import gsubs
 import time
 import logging
 import threading
+
 networks=['mtn','etisalat','glo','airtel']
+statuses=['success','failed']
 logger=logging.getLogger(__file__)
 
 # Create your views here.
 
 VtuPass=VtuServicesUtils()
-def transaction_instance(user,transaction_type,status,
-                                amount,description,reference_id):
+def transaction_instance(user,transaction_type,status,amount,description,reference_id):
     
-    
-    transaction=Transaction.objects.create( user=user,
-                                            transaction_type=transaction_type,
-                                            status=status,
-                                            amount=decimal.Decimal(float(amount)),
-                                            description=description,
-                                            reference_id=reference_id
-                                                    )
+    transaction=Transaction.objects.create( user=user,transaction_type=transaction_type,
+                                            status=status,amount=decimal.Decimal(float(amount)),
+                                            description=description,reference_id=reference_id
+                                            )
     logger.debug(transaction)
   
     return transaction
@@ -107,19 +104,16 @@ class VtuServicesView(APIView):
     
 
     def get(self,request):
-        service_id=str(request.GET.get('service_id')).strip()
-        service_type=str(request.GET.get('service_type')).upper()
-        if not service_id or not service_type:
-            return Response({'error': 'service_id and service_type are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        service_id=str(request.GET.get('service_id')).strip().lower()
         try:
-            if service_type == 'TV':
+            if service_id in ['dstv','gotv','startimes','showmax']:
                 res=VtuServicesUtils().GetServiceVariations(service_id=service_id)
                 return Response({
                 'data':res,
                     }, status=status.HTTP_200_OK)
-            if service_type == 'DATA':
+            elif service_id in networks:
                 res = gsubs.fetch_data_plans(service_id)
-                res2=VtuServicesUtils().GetServiceVariations(service_id=f'{service_id}')
+                res2=VtuServicesUtils().GetServiceVariations(service_id=f'{service_id}-data')
                 providers=res+res2
                 filtered_providers = [plan for plan in providers if plan.get('price', 0) <= 10000]
                 sorted_data=sorted(filtered_providers,key=lambda x: (x['price'],x['qty']=='null'))
@@ -129,7 +123,7 @@ class VtuServicesView(APIView):
             
             else:
                 return Response({
-                        'data':"provide service_type",
+                        'data':"Invalid service ID",
                     }, status=status.HTTP_404_NOT_FOUND)
             
             
@@ -145,17 +139,20 @@ class VtuServicesView(APIView):
         phone_no=request.data.get('phone_no')
         res={}
         transaction_type='subscription',
-        data = request.data
+        data = request.data.copy()
         wallet=self.get_user_wallet(request)
-        amount=data['price']
-        verify_transaction_status=[gsubs.verify_transaction_status, VtuPass.verify_transaction_status]
+        amount=data.get('price',0)
+        verify_transaction_status=[gsubs.verify_transaction_status,VtuPass.verify_transaction_status]
+        provider=str(request.data.get('provider')).upper()
+
+        
         
 
         if wallet.balance >= decimal.Decimal(float(amount)):
             try:
                 if service_type =='AIRTIME':
                     
-                    provider=request.data.get('provider').upper()
+                    
                     res =VtuServicesUtils.PayForAirtimeService(service_id=service_id,
                                                             amount=amount,
                                                             phone_no=phone_no)
@@ -163,45 +160,39 @@ class VtuServicesView(APIView):
                     data=res['content']['transactions']
                     vt_request_id=str(res.get('requestId')).strip()
                     unit_price=data['unit_price']
+
+                    transaction=transaction_instance(user=request.user,transaction_type=transaction_type,
+                                                        status='processing',amount=decimal.Decimal(float(amount)),
+                                                    description=f"Airtime purchase",reference_id=vt_request_id
+                                                        )  
+                    wallet.balance -=decimal.Decimal(float(amount))
+                    wallet.save()
+
+                    if res_status in ['completed', 'pending']:
+                        transaction.status= res_status
+                        transaction.save()
+                        data=TransactionSerializer(transaction).data
+                        return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
+
+                    elif res_status == 'failed':
+                        transaction.status= res_status
+                        transaction.save()
+                        threading.Thread(target=self.settle_failed_transaction,
+                            args=(wallet,transaction)
+                        ).start()
+
+                        return Response({'data':TransactionSerializer(transaction).data,
+                                            'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
+
+                    else:
+                        return Response({'data':TransactionSerializer(transaction).data,
+                                            'message':'processing'},status=status.HTTP_102_PROCESSING)
+
                     
 
-                    if wallet.balance >= decimal.Decimal(float(amount)):
-
-                        transaction=transaction_instance(
-                            user=request.user,
-                            transaction_type=transaction_type,status='processing',
-                            amount=decimal.Decimal(float(amount)),
-                            description=f"Airtime purchase",
-                            reference_id=vt_request_id
-                        )
-
-                        
-                        wallet.balance -=decimal.Decimal(float(amount))
-                        wallet.save()
-
-                        if res_status in ['completed', 'pending']:
-                            transaction.status= res_status
-                            transaction.save()
-                            data=TransactionSerializer(transaction).data
-                            return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
-
-                        elif res_status == 'failed':
-                            transaction.status= res_status
-                            transaction.save()
-                            threading.Thread(target=self.settle_failed_transaction,
-                                args=(wallet,transaction)
-                            ).start()
-
-                            return Response({'data':TransactionSerializer(transaction).data,
-                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
-
-                        else:
-                            return Response({'data':TransactionSerializer(transaction).data,
-                                             'message':'processing'},status=status.HTTP_102_PROCESSING)
-            
                 elif service_type =='DATA':
            
-                    provider=request.data.get('provider').upper()
+                    
                     
                     # wallet.balance+= 2000
                     # wallet.save()
@@ -211,27 +202,34 @@ class VtuServicesView(APIView):
                                                                 amount=decimal.Decimal(float(data['price'])),
                                                                 description='Data Bundle purchase',
                                                     )
+                    
+                    
                     data['request_id'] = transaction.reference_id
+                    
+                    
+                    
                     providers_dict={
                         "GSUB":gsubs.buy_data,
                         "VTPASS":VtuPass.PayForDataService,
                     }
-                    response = providers_dict[provider](request.data)
+                    response = providers_dict[provider](data)
+                    
                     wallet.balance -= decimal.Decimal(float(data['price']))
                     wallet.save()
                     transaction.status=response
                     transaction.save()
+                    data=TransactionSerializer(transaction).data
                     if response=='success':
                         transaction.status="completed"
                         transaction.save()
                         return Response(
-                            {'data':{'status':response,"message":'ok'}}, status = status.HTTP_200_OK
+                            {'data':{'status':response,"message":'ok','content':data},}, status = status.HTTP_200_OK
                         )
                     else:
                         return Response(
-                            {'data':{'status':response,"message":''}}, status = status.HTTP_400_BAD_REQUEST)
+                            {'data':{'status':response,"message":'','content':data}}, status = status.HTTP_400_BAD_REQUEST)
                  
-                elif service_type == "STATUS": #check status of pending transactions and credit users
+                elif service_type.upper() == "STATUS": #check status of pending transactions and credit users
                     try:
                             transaction = Transaction.objects.get(reference_id=data['reference_id'])
                     except Transaction.DoesNotExist:
@@ -240,17 +238,29 @@ class VtuServicesView(APIView):
                     if service_id.upper() in ["DATA","AIRTIME"]:
                         
                         # Check both providers
-                        for check_func in verify_transaction_status:
-                            status_result = check_func(request_id=transaction.reference_id)
-                            if status_result == 'failed':
-                                return handle_failed_transaction(request.user, transaction)
-                            elif status_result == 'success':
-                                transaction.status="completed"
-                                transaction.save()
-                                return Response({'detail': 'Transaction succeeded!'}, status=status.HTTP_202_ACCEPTED)
+                        idx=0
+                        status_result='pending'
 
-                            else:
-                                return Response({'detail': 'Transaction is still pending '}, status=status.HTTP_202_ACCEPTED)
+                        for idx, check_func in enumerate(verify_transaction_status):
+                            try:
+                                status_result = check_func(request_id=transaction.reference_id)
+                                print(f"Attempt {idx + 1} using {check_func.__name__}: {status_result}")
+                                if status_result in statuses:
+                                    break
+                            except Exception as e:
+                                print(f"Error in {check_func.__name__}: {e}")
+                                continue
+
+                        
+                        if status_result == 'failed':
+                            return handle_failed_transaction(request.user, transaction)
+                        elif status_result == 'success':
+                            transaction.status="completed"
+                            transaction.save()
+                            return Response({'detail': 'Transaction succeeded!'}, status=status.HTTP_202_ACCEPTED)
+
+                        else:
+                            return Response({'detail': 'Transaction is still pending '}, status=status.HTTP_202_ACCEPTED)
                     
                     elif service_id.upper() in ["TV","ELECTRICITY"]:
                         status_result=verify_transaction_status[1](request_id=transaction.reference_id)
@@ -285,42 +295,39 @@ class VtuServicesView(APIView):
                     vt_request_id=str(res.get('requestId')).strip()
                     unit_price=data['unit_price'] 
 
-                    if wallet.balance >= decimal.Decimal(float(amount)):
+                    
 
-                        transaction=transaction_instance(
-                            user=request.user,
-                            transaction_type=transaction_type,status='processing',
-                            amount=decimal.Decimal(float(amount)),
-                            description=f"{data['product_name']} Prepaid unit purchase",
-                            reference_id=vt_request_id
-                        )
+                    transaction=transaction_instance(
+                        user=request.user,
+                        transaction_type=transaction_type,status='processing',
+                        amount=decimal.Decimal(float(amount)),
+                        description=f"{data['product_name']} Prepaid unit purchase",
+                        reference_id=vt_request_id
+                    )
 
-                        
-                        wallet.balance -=decimal.Decimal(float(amount))
-                        wallet.save()
+                    
+                    wallet.balance -=decimal.Decimal(float(amount))
+                    wallet.save()
 
-                        if res_status in ['completed', 'pending']:
-                            transaction.status= res_status
-                            transaction.save()
-                            data=TransactionSerializer(transaction).data
-                            return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
+                    if res_status in ['completed', 'pending']:
+                        transaction.status= res_status
+                        transaction.save()
+                        data=TransactionSerializer(transaction).data
+                        return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
 
-                        elif res_status == 'failed':
-                            transaction.status= res_status
-                            transaction.save()
-                            threading.Thread(target=self.settle_failed_transaction,
-                                args=(wallet,transaction)
-                            ).start()
+                    elif res_status == 'failed':
+                        transaction.status= res_status
+                        transaction.save()
+                        threading.Thread(target=self.settle_failed_transaction,
+                            args=(wallet,transaction)
+                        ).start()
 
-                            return Response({'data':TransactionSerializer(transaction).data,
-                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
+                        return Response({'data':TransactionSerializer(transaction).data,
+                                            'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
 
-                        else:
-                            return Response({'data':TransactionSerializer(transaction).data,
-                                             'message':'processing'},status=status.HTTP_102_PROCESSING)
-                   
                     else:
-                        return Response({'message':'insufficient fund','data':{}},status=status.HTTP_406_NOT_ACCEPTABLE)
+                        return Response({'data':TransactionSerializer(transaction).data,
+                                            'message':'processing'},status=status.HTTP_102_PROCESSING)
                 
                 
 
