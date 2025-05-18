@@ -4,8 +4,9 @@ from django.conf import settings
 from datetime import datetime
 import string
 import random
-from .utils import extract_size_name, add_commision
-
+from .utils import extract_size_name,add_commision,data_percentage_add
+import math
+from decimal import Decimal
 def generate_vtu_request_id(length):
     char=string.ascii_lowercase+string.digits
     random_id="".join(random.choice(char) for _ in range(length))
@@ -80,24 +81,32 @@ class VtuServicesUtils():
         
 
     def GetServiceVariations(self,service_id):
-        url=f'{base_url}service-variations?serviceID={service_id}-data'
+        url=f'{base_url}service-variations?serviceID={service_id}'
         res=requests.get(url=url,headers=get_req_headers)
         response = res.json()
         plans =[]
+        
         for item in response['content']['variations']:
                     new_item={}
-                    new_item['price']=add_commision(float(item['variation_amount']))
-                    new_item['provider_price'] = float(item['variation_amount'])#nomal_amount
-                    new_item['provider']='VTPASS'
+                    new_item['price']=Decimal(math.ceil((add_commision(item['variation_amount']))))
+                    new_item['provider_price'] = float(item['variation_amount'])#normal_amount
                     new_item['plan_id']=str(item['variation_code']).strip()
-                    #new_item['slug']=item['name']
+                    new_item['provider']='VTPASS'
                     new_item['service_id'] =service_id
-                    new_item['network']=service_id.upper()
                     new_item['name']=item['name']
-                    duration,qty = extract_size_name(item['name'])
-                    new_item['duration'] =duration
-                    new_item['qty'] =qty
+                    new_item['network']=str(service_id).upper().split('-')[0]
+                    
+                    if 'data'  in str(service_id).strip():
+                        duration,qty = extract_size_name(item['name'])
+                        new_item['duration'] =duration
+                        new_item['qty'] =qty
+                    else:
+                        new_item['name']=str(item['variation_code']).replace('-',' ').capitalize()
+                        new_item['network']=str(service_id).upper()
+                        
                     plans.append(new_item)
+
+
         return plans
     
 
@@ -135,29 +144,41 @@ class VtuServicesUtils():
             return "failed"
 
     def verify_transaction_status(self,request_id):
+        
         payload={
             'request_id':request_id,
         }
+        print('in vtpass ',payload)
         try:
-            res=requests.post(url=f'{base_url}/requery/',headers=post_req_headers,data=payload)
-            res =res.json()
-            if res['content']['transactions']['status'] == 'delivered':
-                return True
-            return False
-        except Exception:
-            return False
+            res=requests.post(url=f'{base_url}requery',headers=post_req_headers,data=payload)
+            print(res.json())
+
+            response =res.json()
+            
+            if response['content']['transactions']['status'] == 'delivered':
+                return 'success'
+            elif response['content']['transactions']['status'] == "pending":
+                return 'pending'
+            else:
+                return 'failed'
+            
+        except Exception as e:
+            print(f"VTPass verification error: {e}")
+            return "pending"
+            
 
         
 
 
-    def PayForDataService(self,data):        
+    def PayForDataService(self,data): 
+        print(data)      
         payload={
             'request_id':data['request_id'],
             'serviceID':data['service_id'],
             'billersCode':data['phone_no'],
             'phone':data['phone_no'],
             'variation_code':data['plan_id'],
-            'amount': float(data['provider_price'])
+            'amount': float(data['price'])/float(1+(data_percentage_add/100))
         }
         try:
             res=requests.post(url=self.url,headers=post_req_headers,data=payload)
