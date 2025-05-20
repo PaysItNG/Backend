@@ -111,26 +111,27 @@ class VtuServicesUtils():
     
 
 
-    def PayForAirtimeService(self,service_id,amount,phone_no):
+    def PayForAirtimeService(self,data):
          
-        request_id=generate_vtu_request_id(10)
+        # request_id=generate_vtu_request_id(10)
         
         payload={
-            'request_id':request_id,
-            'serviceID':service_id,
-            'amount':amount,
-            'phone':phone_no
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'amount':data['amount'],
+            'phone':str(data['phone_no'])
 
         }
         
-        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        
+        
         try:
             res=requests.post(url=self.url,headers=post_req_headers,data=payload)
             res =res.json()
-            print(res)
+           
             status ='success'
             if res['content']['transactions']['status'] == 'delivered':
-                status ="success"
+                status ="completed"
             elif res['content']['transactions']['status'] == 'pending':
                 status='pending'
             elif res['content']['transactions']['status'] == 'failed':
@@ -156,7 +157,7 @@ class VtuServicesUtils():
             response =res.json()
             
             if response['content']['transactions']['status'] == 'delivered':
-                return 'success'
+                return 'completed'
             elif response['content']['transactions']['status'] == "pending":
                 return 'pending'
             else:
@@ -175,8 +176,8 @@ class VtuServicesUtils():
         payload={
             'request_id':data['request_id'],
             'serviceID':data['service_id'],
-            'billersCode':data['phone_no'],
-            'phone':data['phone_no'],
+            'billersCode':str(data['phone_no']),
+            'phone':str(data['phone_no']),
             'variation_code':data['plan_id'],
             'amount': float(data['price'])/float(1+(data_percentage_add/100))
         }
@@ -186,7 +187,7 @@ class VtuServicesUtils():
             print(res)
             status ='success'
             if res['content']['transactions']['status'] == 'delivered':
-                status ="success"
+                status ="completed"
             elif res['content']['transactions']['status'] == 'pending':
                 status='pending'
             elif res['content']['transactions']['status'] == 'failed':
@@ -218,17 +219,17 @@ class VtuServicesUtils():
 
 
     
-    def PayForElectricityService(self,billers_code,service_id,phone_no,amount,variation_code='prepaid'):
+    def PayForElectricityService(self,data):
 
-        request_id=generate_vtu_request_id(10)
+        # request_id=generate_vtu_request_id(10)
         
         payload={
-            'request_id':request_id,
-            'serviceID':service_id,
-            'billersCode':int(billers_code),
-            'phone':str(phone_no),
-            'variation_code':variation_code,
-            'amount':amount
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':str(data['billers_code']),
+            'phone':str(data['phone_no']),
+            'variation_code':data['meter_no'],
+            'amount':data['amount']
 
         }
         res=requests.post(url=self.url,headers=post_req_headers,data=payload)
@@ -258,7 +259,7 @@ class VtuServicesUtils():
         res=requests.post(url=url,headers=post_req_headers,data=payload)
         return res.json()
     
-    def PayForTvService(self):
+    def PayForTvService(self,data):
         request_id=generate_vtu_request_id(10)
         url=f'{self.url}pay'
     

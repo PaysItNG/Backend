@@ -148,12 +148,10 @@ class TransactionsView(APIView):
                 return Response({'data':transactions,'wallet':wallet},status=status.HTTP_200_OK)
         
         else:
-            data=list(filter(lambda x: 
-                                datetime.fromisoformat(x['created_at'].replace("Z","+00:00")).month == int(month) 
-                                and datetime.fromisoformat(x['created_at'].replace("Z","+00:00")).year == int(year) ,
+            data=list(filter(lambda x: datetime.fromisoformat(x['created_at'].replace("Z","+00:00")).month == int(month) 
+                                and datetime.fromisoformat(x['created_at'].replace("Z","+00:00")).year == int(year),
                                 transactions))
 
-            
             if payment_type in [None, '']:
                 amount=self.get_transaction_type_amount(data)
 
