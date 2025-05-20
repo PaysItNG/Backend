@@ -318,12 +318,12 @@ def generate_unique_identifier()->str:
         return token
 
 class Transaction(models.Model):
-    TRANSACTION_TYPES = [
+    TRANSACTION_TYPES = (
         ('deposit', 'deposit'),
         ('withdrawal', 'withdrawal'),
         ('transfer', 'transfer'),
         ('subscription', 'subscription'),
-    ]
+    )
     PAYMENT_TYPE=(
         ('debit','debit'),
         ('credit','credit'),
@@ -333,15 +333,15 @@ class Transaction(models.Model):
         ('completed', 'completed'),
         ('processing', 'processing'),
         ('refunded', 'refunded'),
-        ('failed', 'Failed'),
+        ('failed', 'failed'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     to_from =models.CharField(max_length=15,null=True,blank=True)
     sender_name =models.CharField(max_length=25, null=True,blank=True)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES,)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES,null=True,blank=True)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES,null=True,blank=True, default='pending')
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE,null=True,blank=True )
     paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
     paystack_ref=models.CharField(max_length=100,null=True,blank=True)
     vt_request_id=models.CharField(max_length=100,
@@ -360,12 +360,12 @@ class Transaction(models.Model):
         debit_transaction_types=['withdrawal','transfer','subscription']
         if self.paystack_data!= None:
             self.reference_id=json.loads(self.paystack_data)['data']['reference']
-        if self.payment_type in [None,'']:
-            if self.transaction_type  in debit_transaction_types:
-                self.payment_type='debit'
-            else:
-                self.payment_type='credit'
-            
+        
+        if self.transaction_type  in debit_transaction_types:
+            self.payment_type='debit'
+        else:
+            self.payment_type='credit'
+        
         if self.reference_id == None:
             try:
                 Transaction.objects.get(reference_id=ref_id)
