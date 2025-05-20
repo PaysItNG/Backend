@@ -198,7 +198,7 @@ class VtuServicesUtils():
 
             return status
         except Exception as e:
-            return "failed"
+            return False
     
 
 
@@ -235,16 +235,19 @@ class VtuServicesUtils():
         res=requests.post(url=self.url,headers=post_req_headers,data=payload)
         data=res.json() 
 
-       
-        status=None
-        if data['content']['transactions']['status'] =='delivered':
-            status='completed'
-        elif data['content']['transactions']['status']=='pending':
-            status='pending'
-        elif data['content']['transactions']['status']=='failed':
-            status='failed'
-            
-        return data,status
+        try:
+
+            status=None
+            if data['content']['transactions']['status'] =='delivered':
+                status='completed'
+            elif data['content']['transactions']['status']=='pending':
+                status='pending'
+            elif data['content']['transactions']['status']=='failed':
+                status='failed'
+                
+            return data,status
+        except Exception as e:
+            return False
     
 
     def VerifySmartCardNumber(self,card_number,service_id):
@@ -260,8 +263,40 @@ class VtuServicesUtils():
         return res.json()
     
     def PayForTvService(self,data):
-        request_id=generate_vtu_request_id(10)
-        url=f'{self.url}pay'
+       
+        payload={
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':str(data['card_no']),
+            'amount':float(data['price'])/float(1+(data_percentage_add/100)),
+            'phone':str(data['phone_no']),
+            'subscription_type':data['subscription_type']
+
+        }
+        if data['subscription_type'] == 'change':
+            payload['variation_code']=data['plan_id']
+
+        print(payload)
+
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+
+        data=res.json() 
+        print(data)
+        try:
+
+            status=None
+            if data['content']['transactions']['status'] =='delivered':
+                status='completed'
+            elif data['content']['transactions']['status']=='pending':
+                status='pending'
+            elif data['content']['transactions']['status']=='failed':
+                status='failed'
+                
+            return data,status
+        except Exception as e:
+            return False
+
+       
     
 
 

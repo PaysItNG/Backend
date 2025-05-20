@@ -293,7 +293,7 @@ class VtuServicesView(APIView):
                             user=request.user,
                             transaction_type=transaction_type,status='processing',
                             amount=decimal.Decimal(float(amount)),
-                            description=f"{data['product_name']} Prepaid unit purchase"
+                            description=f"{str(service_id).replace('-',' ').capitalize()} Prepaid unit purchase"
                           
                         )
                         data['request_id']=transaction.reference_id
@@ -302,12 +302,11 @@ class VtuServicesView(APIView):
                         res,res_status=VtuPass.PayForElectricityService(data)
                         
 
-                        # data=res['content']['transactions']
-                        # vt_request_id=str(res.get('requestId')).strip()
-                        # unit_price=data['unit_price'] 
-
                         wallet.balance -=decimal.Decimal(float(amount))
                         wallet.save()
+                        #re assing the description from response received from the response to get acrimony PHED.KEDCO
+                        # transaction.description=f'{res['content']['transactions']['product_name']} Prepaid unit purchase'
+                        
 
                         if res_status in ['completed', 'pending']:
                             transaction.status= res_status
@@ -332,7 +331,44 @@ class VtuServicesView(APIView):
                     
 
                     elif service_type == 'TV':
-                        pass
+                        transaction=transaction_instance(
+                            user=request.user,
+                            transaction_type=transaction_type,status='processing',
+                            amount=decimal.Decimal(float(amount)),
+                            description=f"{data['service_id']} subscription purchase"
+                          
+                        )
+
+                        data['request_id']=transaction.reference_id
+                        res,res_status=VtuPass.PayForTvService(data)
+
+                        wallet.balance -=decimal.Decimal(float(amount))
+                        wallet.save()
+                        #re assing the description from response received from the response to get acrimony PHED.KEDCO
+                        # transaction.description=f'{res['content']['transactions']['product_name']} Prepaid unit purchase'
+                        
+
+                        if res_status in ['completed', 'pending']:
+                            transaction.status= res_status
+                            transaction.save()
+                            data=TransactionSerializer(transaction).data
+                            return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
+
+                        elif res_status == 'failed':
+                            transaction.status= res_status
+                            transaction.save()
+                            threading.Thread(target=self.settle_failed_transaction,
+                                args=(wallet,transaction)
+                            ).start()
+
+                            return Response({'data':TransactionSerializer(transaction).data,
+                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
+
+                        else:
+                            return Response({'data':TransactionSerializer(transaction).data,
+                                                'message':'processing'},status=status.HTTP_102_PROCESSING)
+
+
                     return Response({'data':res}, status=status.HTTP_200_OK)
 
                 
