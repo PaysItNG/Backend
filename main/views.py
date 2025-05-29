@@ -174,7 +174,9 @@ def APIendpoints(request):
             'auth/',
             ['register/', 'activate/account/', 'login/','verify/social/',
              'password/change/', 'password/verify/',
-             'kyc/apply/', 'kyc/status/','kyc/approve/<str:id>/','token/refresh/']
+             'kyc/apply/', 'kyc/status/','kyc/approve/<str:id>/','token/refresh/',
+             'verify/social/google-oauth2/'
+             ]
             ],
 
              ['virtual-card/',

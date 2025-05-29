@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path,re_path
 from .views import *
 from django.conf.urls.static import static
 from django.conf import settings
@@ -14,7 +14,7 @@ urlpatterns = [
     path('activate/account/',VerifyOTPView.as_view(),name='activate_account'),
     path('login/',LoginView.as_view(),name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('verify/social/',VerifySocialLogin,name='verify_social'),
+    re_path('verify/'+ r'social/(?P<backend>[^/]+)/$',VerifySocialLogin,name='verify_social'),
     path('password/change/',RequestVerifyPasswordChangeView.as_view(),name='password_change'),
     path('two-factor/enable/',EnableTwoFactorAuthentication.as_view(),name='enable_two_factor_authentication'),
     #  path('password/verify/',VerifyPasswordRequestChangeView.as_view(),name='password_verify'),
