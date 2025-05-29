@@ -32,6 +32,8 @@ from .signals import send_user_message
 from payment.utils import PayStackUtils
 from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,JSONParser
 from django.db import DatabaseError,IntegrityError,OperationalError
+from social_django.utils import psa
+
 
 logger=logging.getLogger(__file__)
 PaysTack =PayStackUtils()
@@ -140,6 +142,7 @@ class SignupView(APIView):
 
 class VerifyOTPView(APIView):
     permission_classes=[]
+    
     def post(self, request):
         otp = request.data.get("otp")
         email = request.data.get("email")
@@ -238,29 +241,46 @@ class LoginView(APIView):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def VerifySocialLogin(request):
+@psa()
+def VerifySocialLogin(request, backend):
     scheme = request.is_secure() and "https" or "http"
     url=f'{requestUrl(request)}/oauth/convert-token/'
     print(url)
     token=request.data.get('access_token')
-    # print(token)
+
+    user = request.backend.do_auth(token)
+    print(user,user.first_name)
 
 
-    data={
-        'grant_type':'convert_token',
-        'token':token,
-        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
-        'backend':'google-oauth2',
+    if user:
+        # new_user=User.objects.get(user=user)
+        print(user)
+        user,_=User.objects.get_or_create(
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email
+
+            )
+        print(user)
+        token=get_tokens_for_user(user)
+        print(token)
         
-    }
-
-    response=requests.post(url,data=data)
-    logger.debug(response)
-    print(response.json())
-
-    return Response({
-        'data':response.json()
-    })
+        return Response(
+            {
+                'token': token,
+                'user':UserSerializer(user,many=False).data
+            },
+            status=status.HTTP_200_OK,
+            )
+    else:
+        return Response(
+            {
+                'errors': {
+                    'token': 'Invalid token'
+                    }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class RequestVerifyPasswordChangeView(APIView):
