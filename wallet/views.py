@@ -1,0 +1,271 @@
+from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView,DestroyAPIView
+from rest_framework.response import Response
+# Create your views here.
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated,AllowAny
+from userauth.views import getUserData
+from main.serializers import *
+from main.models import *
+from rest_framework.decorators import api_view
+import hashlib
+import hmac
+from django.conf import settings
+import json
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from main.paystack import *
+from main.serializers import *
+from virtualcard.utils import StripePaymentUtils
+from decimal import Decimal
+from rest_framework import status
+
+no_success_status=['pending','ongoing','queued']
+
+
+
+
+
+@api_view(['POST'])
+def PaystackWebhook(request):
+    payload = request.data
+    print(payload)
+    sig_header = request.headers['x-paystack-signature']
+
+    if sig_header == None:
+        return Response({
+            'data':'Missing paystack signature',
+            'status':'failed'
+        })
+    
+    # print('REQUEST HEADERS ',request.headers)
+   
+    hash=hmac.new(
+                 key=settings.PSTACK_SECRET_KEY.encode('utf-8'),
+                  msg=json.dumps(payload).encode(),
+                  digestmod=hashlib.sha512
+                  ).hexdigest()
+
+    if sig_header!= hash:
+        print("failed")
+        return Response({
+            'data':'invalid paystack signature',
+            'status':'failed'
+        })
+    
+
+    
+    event_data=json.loads(payload)
+
+    if event_data.get('event') == 'charge.success':
+        print('success')
+        
+
+        return Response({
+            'data':event_data,
+            "status": "success"
+        })
+    
+
+
+
+
+class DepositFundsView(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+
+    def post(self,request,*args,**kwargs):
+        data=request.data['data']
+        paystack_refs=[]
+
+        ## REUSEABLE LOGIC TO CHECK IF PAYSTACK REFERENCE ALREADY EXISTS(PROBABLY)
+
+        # for obj in Transaction.objects.all():
+        #     if obj.paystack_data != None:
+        #         print(json.loads(obj.paystack_data))
+        #         ref=json.loads(obj.paystack_data)['data']['reference']
+        #         paystack_refs.append(ref)
+
+        try:
+            transaction=Transaction.objects.get(paystack_ref=data['reference'])
+            return Response({
+                'status':'failed',
+                'message':'payment reference already assigned'
+            })
+
+
+        except ObjectDoesNotExist:
+            response=PaystackVerify(data=data)
+            transaction=Transaction()
+            status=''
+            message=''
+            deposited=False
+           
+            wallet={}
+            if response['data']['status'] in no_success_status:
+                transaction.status=no_success_status[0]
+                deposited=False
+                status='failed'
+                message='deposit pending'
+            else:
+                if response['data']['status'] == 'success':
+                    transaction.status='completed'
+                    user_wallet=Wallet.objects.get(user=request.user)
+                    user_wallet.balance+=float(response['data']['amount'])
+                    user_wallet.save()
+                    wallet=WalletSerializer(user_wallet).data
+                    deposited=True
+                    status='success'
+                    message='deposit successful'
+
+
+                elif response['data']['status']=='failed':
+                    transaction.status = 'failed'
+                    deposited=False
+                    status='failed'
+                    message='deposit failed'
+                else:
+                    pass
+            
+            transaction.user=request.user
+            transaction.amount=float(response['data']['amount'])
+            transaction.transaction_type='deposit'
+            transaction.paystack_data=json.dumps(response)
+            transaction.save()
+
+            
+
+
+                
+
+            # print(response)
+            return Response({
+                'transaction':TransactionSerializer(transaction).data,
+                'wallet':wallet,
+                'status': status,
+                'message':message,
+                'deposited':deposited
+
+            })
+
+
+
+
+class SwapCurrencyWalletFunds(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+    def get(self,request):
+      from_currency=str(request.GET.get('from_currency')).strip()
+      to_currency=str(request.GET.get('to_currency')).strip()
+      amount=Decimal(request.GET.get('amount'))
+
+      currency=StripePaymentUtils.exchange_conversion(to_curr=to_currency,
+                                                      from_curr=from_currency,
+                                                      amount=amount)
+      
+      if currency['success'] == True:
+         return Response({
+            'amount':f"{currency['result']:.2f}",'data':currency['query'],
+            'meta_data':currency
+         },status=status.HTTP_200_OK)
+      
+      else:
+         return Response({
+            'data':{}
+         },status=status.HTTP_403_FORBIDDEN)
+      
+    def post(self,request):
+        from_currency=str(request.data.get('from_currency')).strip().upper()
+        to_currency=str(request.data.get('to_currency')).strip().upper()
+        amount=round(Decimal(request.data.get('amount')),2)
+        converted_amount=round(Decimal(request.data.get('converted_amount')),2)
+
+        try:
+            wallet,_=Wallet.objects.get_or_create(user=request.user)
+
+            if from_currency == 'NGN' and to_currency == 'USD':
+                if wallet.balance >= amount:
+                    wallet.balance-=amount
+                    wallet.usd_balance+=converted_amount
+                    wallet.save()
+                    return Response({
+                        'data':WalletSerializer(wallet).data,'swapped':True}, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':False,'message':"insufficient funds"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+                
+            elif from_currency == 'USD' and to_currency =='NGN':
+                if wallet.usd_balance>=amount:
+                    wallet.usd_balance-=amount
+                    wallet.balance+=converted_amount
+                    wallet.save()
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':True
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'data':WalletSerializer(wallet).data,
+                        'swapped':False,'message':"insufficient funds"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            else:
+                return Response({
+                    'data':{},
+                    'msg':'can\'t swap both currencies at the moment contact support for futher assistance',
+                    'swapped':True
+                },status=status.HTTP_406_NOT_ACCEPTABLE)
+        except Exception as e:
+            return Response({
+                    'data':{},
+                    'msg':f'an issue accured {e}'
+                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+            
+            
+class UserWalletData(APIView):
+    permission_classes=[IsAuthenticated]
+    authentication_classes=[JWTAuthentication]
+    def get(self,request):
+        try:
+            wallet=Wallet.objects.get(user=request.user)
+            return Response({
+                'data':WalletSerializer(wallet).data
+            }, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+
+                return Response({
+                    'data':{},
+                    'msg':'No wallet assigned to user'
+                },status=status.HTTP_404_NOT_FOUND)
+            
+        
+
+        
+
+
+class TransferFundsView(APIView):
+    authentication_classes=[JWTAuthentication]
+    permission_classes=[IsAuthenticated]
+    def get(self,request,*args,**kwargs):
+        transfer_type=request.data.get('transfer_type')
+
+        user_wallet=Wallet.objects.get(user=request.user)
+        type=request.GET.get('type')
+        amount=request.GET.get('type')
+        
+        if float(amount)>float(user_wallet.balance):
+            return Response({
+                'message':'insufficient fund'
+            })
+        else:
+
+            if transfer_type == 'in_app':
+                wallet_id=request.data.get('wallet_id')
+            
+            else:
+
+                if transfer_type == 'bank_transfer':
+                    pass
