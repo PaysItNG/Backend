@@ -213,15 +213,15 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL='main.User'
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_USE_SSL = False
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_HOST_USER=''
-# EMAIL_HOST_PASSWORD=''
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER='apaysit@gmail.com'
+EMAIL_HOST_PASSWORD='btio qhzc bids qbsf'
 
 
 AUTHENTICATION_BACKENDS = (
@@ -232,6 +232,21 @@ AUTHENTICATION_BACKENDS = (
    'drf_social_oauth2.backends.DjangoOAuth2',
    'django.contrib.auth.backends.ModelBackend',
 )
+
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+    'social_core.pipeline.social_auth.associate_by_email',  # <- this line not included by default
+    'social_core.pipeline.user.create_user',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
+)
+
 
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '390818397275-fnsq2g53odn0k6hkb7cblatg371t2d1f.apps.googleusercontent.com'
@@ -263,9 +278,13 @@ GSUB_KEY = env("GSUB_Key").strip()
 DATA_DISCOUNT=0.5
 
 CORS_ALLOWED_ORIGINS = [
-    # "https://backend-hr0w.onrender.com",
-    "http://localhost:3000"
+    "https://paysit-khqb.onrender.com",
+    "http://localhost:3000",
+    "https://paysit-app.onrender.com"
 ]
+
+
+
 
 # CORS_ORIGIN_WHITELIST = [
 #     "http://localhost:3000"

@@ -5,8 +5,10 @@ from asgiref.sync import async_to_sync
 import asyncio
 import math
 from .vtpass import VtuServicesUtils
-from .utils import extract_size_name,add_commision
+from .utils import extract_size_name,add_commision,data_percentage_add
 from django.conf import settings
+
+from decimal import Decimal
 
 GSUB_KEY =settings.GSUB_KEY
 base_url ="https://gsubz.com/api"
@@ -105,21 +107,23 @@ def fetch_data_plans(provider):
         async with aiohttp.ClientSession() as session:
             tasks = [fetch_data_plan_sync(session, service) for service in service_list]
             responses = await asyncio.gather(*tasks)
-            print(responses)
 
             result = affect_data_price(responses,provider)
             return result
     return async_to_sync(main)()
 
 def buy_data(data):
-   
+    
     payload={
     'serviceID': data['service_id'],
     'plan': data['plan_id'],
     'api': GSUB_KEY,
-    'amount': data['provider_price'],
+    'amount': round(float(data['price'])/float(1+(data_percentage_add/100)),1),
     'phone': data['phone_no'],
-    'requestID':data['request_id']}
+    'requestID':data['request_id']
+    }
+    print(payload)
+    
     try:
         response = requests.post(f'{base_url}/pay/',headers = headers,data=payload, )
         result = response.json()
@@ -155,18 +159,28 @@ def buy_airtime(data,txn):
         return False
   
 
-async def verify_transaction_status(request_id):
+def verify_transaction_status(request_id):
     payload={'requestID': request_id,
             'api': GSUB_KEY}
+    print(request_id)
     try:
         response = requests.post(f'{base_url}/verify/',headers = headers,data=payload, files=[])
         result = response.json()
-        if result["status"]== "success":
+        print('inside gsub ', result)
+        if result["code"]== "404":
+            return False
+
+        elif result["status"]== "success":
             return 'success'
+            
         elif result["status"]== "pending":
             return 'pending'
+        
         else:
             return 'failed'
-    except Exception:
-        return False
+        
+        
+    except Exception as e:
+            print(f"VTPass verification error: {e}")
+            return "pending"
     

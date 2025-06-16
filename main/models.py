@@ -311,19 +311,19 @@ class BusinessTerminal(models.Model):
     user=models.OneToOneField(User,null=True,blank=True,on_delete=models.CASCADE)
     business=models.ForeignKey(Business,null=True,blank=True, on_delete=models.CASCADE)
    
-def generate_unique_identifier():
-    while True:
-        token = generateidentifier(10)
-        if not Transaction.objects.filter(reference_id=token).exists():
-            return token
+def generate_unique_identifier()->str:
+    
+    token = generateidentifier(10)
+    if not Transaction.objects.filter(reference_id=token).exists():
+        return token
 
 class Transaction(models.Model):
-    TRANSACTION_TYPES = [
+    TRANSACTION_TYPES = (
         ('deposit', 'deposit'),
         ('withdrawal', 'withdrawal'),
         ('transfer', 'transfer'),
-        ('subscription', 'subscription')
-    ]
+        ('subscription', 'subscription'),
+    )
     PAYMENT_TYPE=(
         ('debit','debit'),
         ('credit','credit'),
@@ -331,26 +331,24 @@ class Transaction(models.Model):
     STATUS_CHOICES = [
         ('pending', 'pending'),
         ('completed', 'completed'),
-   
         ('processing', 'processing'),
-      
-        ('refunded', 'refunded')
-        ('failed', 'Failed')
+        ('refunded', 'refunded'),
+        ('failed', 'failed'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     to_from =models.CharField(max_length=15,null=True,blank=True)
     sender_name =models.CharField(max_length=25, null=True,blank=True)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES,null=True,blank=True)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES,null=True,blank=True, default='pending')
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE,null=True,blank=True )
     paystack_data=models.JSONField(max_length=50000,null=True,blank=True)
     paystack_ref=models.CharField(max_length=100,null=True,blank=True)
     vt_request_id=models.CharField(max_length=100,
                                    null=True,blank=True)
     otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
-    reference_id = models.CharField(max_length=10, unique=True, editable=False,default=generate_unique_identifier)
+    reference_id = models.CharField(max_length=100, unique=True,default=generate_unique_identifier)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -358,15 +356,16 @@ class Transaction(models.Model):
         return f"{self.transaction_type} - {self.amount} {self.user.email} ({self.status})"
     
     def save(self,*args,**kwargs):
-        ref_id = generate_unique_identifier
+        ref_id = generate_unique_identifier()
         debit_transaction_types=['withdrawal','transfer','subscription']
         if self.paystack_data!= None:
-            self.paystack_ref=json.loads(self.paystack_data)['data']['reference']
-        if self.transaction_type not in debit_transaction_types:
-            self.payment_type='credit'
-        else:
+            self.reference_id=json.loads(self.paystack_data)['data']['reference']
+        
+        if self.transaction_type  in debit_transaction_types:
             self.payment_type='debit'
-            
+        else:
+            self.payment_type='credit'
+        
         if self.reference_id == None:
             try:
                 Transaction.objects.get(reference_id=ref_id)

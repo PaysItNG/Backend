@@ -4,8 +4,9 @@ from django.conf import settings
 from datetime import datetime
 import string
 import random
-from .utils import extract_size_name, add_commision
-
+from .utils import extract_size_name,add_commision,data_percentage_add
+import math
+from decimal import Decimal
 def generate_vtu_request_id(length):
     char=string.ascii_lowercase+string.digits
     random_id="".join(random.choice(char) for _ in range(length))
@@ -82,77 +83,57 @@ class VtuServicesUtils():
         
 
     def GetServiceVariations(self,service_id):
-        url=f'{base_url}service-variations?serviceID={service_id}-data'
+        url=f'{base_url}service-variations?serviceID={service_id}'
         res=requests.get(url=url,headers=get_req_headers)
         response = res.json()
         plans =[]
+        
         for item in response['content']['variations']:
                     new_item={}
-                    new_item['price']=add_commision(float(item['variation_amount']))
-                    new_item['provider_price'] = float(item['variation_amount'])#nomal_amount
-                    new_item['provider']='VTPASS'
+                    new_item['price']=Decimal(math.ceil((add_commision(item['variation_amount']))))
+                    new_item['provider_price'] = float(item['variation_amount'])#normal_amount
                     new_item['plan_id']=str(item['variation_code']).strip()
-                    #new_item['slug']=item['name']
+                    new_item['provider']='VTPASS'
                     new_item['service_id'] =service_id
-                    new_item['network']=service_id.upper()
                     new_item['name']=item['name']
-                    duration,qty = extract_size_name(item['name'])
-                    new_item['duration'] =duration
-                    new_item['qty'] =qty
+                    new_item['network']=str(service_id).upper().split('-')[0]
+                    
+                    if 'data'  in str(service_id).strip():
+                        duration,qty = extract_size_name(item['name'])
+                        new_item['duration'] =duration
+                        new_item['qty'] =qty
+                    else:
+                        new_item['name']=str(item['variation_code']).replace('-',' ').capitalize()
+                        new_item['network']=str(service_id).upper()
+                        
                     plans.append(new_item)
+
+
         return plans
     
 
 
-    def PayForAirtimeService(self,service_id,amount,phone_no):
+    def PayForAirtimeService(self,data):
          
-        request_id=generate_vtu_request_id(10)
+        # request_id=generate_vtu_request_id(10)
         
-        payload={
-            'request_id':request_id,
-            'serviceID':service_id,
-            'amount':amount,
-            'phone':phone_no
-
-        }
-        
-        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
-
-        # print(res.json())
-        return res.json()
-
-    def verify_transaction_status(self,request_id):
-        payload={
-            'request_id':request_id,
-        }
-        try:
-            res=requests.post(url=f'{base_url}/requery/',headers=post_req_headers,data=payload)
-            res =res.json()
-            if res['content']['transactions']['status'] == 'delivered':
-                return True
-            return False
-        except Exception:
-            return False
-
-        
-
-
-    def PayForDataService(self,data):        
         payload={
             'request_id':data['request_id'],
             'serviceID':data['service_id'],
-            'billersCode':data['phone_no'],
-            'phone':data['phone_no'],
-            'variation_code':data['plan_id'],
-            'amount': float(data['provider_price'])
+            'amount':data['amount'],
+            'phone':str(data['phone_no'])
+
         }
+        
+        
+        
         try:
             res=requests.post(url=self.url,headers=post_req_headers,data=payload)
             res =res.json()
-            print(res)
+           
             status ='success'
             if res['content']['transactions']['status'] == 'delivered':
-                status ="success"
+                status ="completed"
             elif res['content']['transactions']['status'] == 'pending':
                 status='pending'
             elif res['content']['transactions']['status'] == 'failed':
@@ -164,6 +145,62 @@ class VtuServicesUtils():
             return status
         except Exception as e:
             return "failed"
+
+    def verify_transaction_status(self,request_id):
+        
+        payload={
+            'request_id':request_id,
+        }
+        print('in vtpass ',payload)
+        try:
+            res=requests.post(url=f'{base_url}requery',headers=post_req_headers,data=payload)
+            print(res.json())
+
+            response =res.json()
+            
+            if response['content']['transactions']['status'] == 'delivered':
+                return 'completed'
+            elif response['content']['transactions']['status'] == "pending":
+                return 'pending'
+            else:
+                return 'failed'
+            
+        except Exception as e:
+            print(f"VTPass verification error: {e}")
+            return "pending"
+            
+
+        
+
+
+    def PayForDataService(self,data): 
+        print(data)      
+        payload={
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':str(data['phone_no']),
+            'phone':str(data['phone_no']),
+            'variation_code':data['plan_id'],
+            'amount': float(data['price'])/float(1+(data_percentage_add/100))
+        }
+        try:
+            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res =res.json()
+            print(res)
+            status ='success'
+            if res['content']['transactions']['status'] == 'delivered':
+                status ="completed"
+            elif res['content']['transactions']['status'] == 'pending':
+                status='pending'
+            elif res['content']['transactions']['status'] == 'failed':
+                status='failed'
+        
+            else:
+                status = "failed"
+
+            return status
+        except Exception as e:
+            return False
     
 
 
@@ -184,21 +221,35 @@ class VtuServicesUtils():
 
 
     
-    def PayForElectricityService(self,billers_code,service_id,phone_no,amount,variation_code='prepaid'):
+    def PayForElectricityService(self,data):
 
-        request_id=generate_vtu_request_id(10)
+        # request_id=generate_vtu_request_id(10)
         
         payload={
-            'request_id':request_id,
-            'serviceID':service_id,
-            'billersCode':int(billers_code),
-            'phone':str(phone_no),
-            'variation_code':variation_code,
-            'amount':amount
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':str(data['billers_code']),
+            'phone':str(data['phone_no']),
+            'variation_code':data['meter_no'],
+            'amount':data['amount']
 
         }
         res=requests.post(url=self.url,headers=post_req_headers,data=payload)
-        return res.json()
+        data=res.json() 
+
+        try:
+
+            status=None
+            if data['content']['transactions']['status'] =='delivered':
+                status='completed'
+            elif data['content']['transactions']['status']=='pending':
+                status='pending'
+            elif data['content']['transactions']['status']=='failed':
+                status='failed'
+                
+            return data,status
+        except Exception as e:
+            return False
     
 
     def VerifySmartCardNumber(self,card_number,service_id):
@@ -213,9 +264,41 @@ class VtuServicesUtils():
         res=requests.post(url=url,headers=post_req_headers,data=payload)
         return res.json()
     
-    def PayForTvService(self):
-        request_id=generate_vtu_request_id(10)
-        url=f'{self.url}pay'
+    def PayForTvService(self,data):
+       
+        payload={
+            'request_id':data['request_id'],
+            'serviceID':data['service_id'],
+            'billersCode':str(data['card_no']),
+            'amount':float(data['price'])/float(1+(data_percentage_add/100)),
+            'phone':str(data['phone_no']),
+            'subscription_type':data['subscription_type']
+
+        }
+        if data['subscription_type'] == 'change':
+            payload['variation_code']=data['plan_id']
+
+        print(payload)
+
+        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+
+        data=res.json() 
+        print(data)
+        try:
+
+            status=None
+            if data['content']['transactions']['status'] =='delivered':
+                status='completed'
+            elif data['content']['transactions']['status']=='pending':
+                status='pending'
+            elif data['content']['transactions']['status']=='failed':
+                status='failed'
+                
+            return data,status
+        except Exception as e:
+            return False
+
+       
     
 
 
