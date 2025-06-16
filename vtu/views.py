@@ -277,8 +277,6 @@ class VtuServicesView(APIView):
                         else:
                             return Response(
                                 {'data':{'status':response,"message":'','content':data}}, status = status.HTTP_400_BAD_REQUEST)
-                    
-                    
                         
         
                     elif service_type == 'ELECTRICITY':
