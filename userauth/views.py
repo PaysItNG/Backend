@@ -34,10 +34,6 @@ from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,J
 from django.db import DatabaseError,IntegrityError,OperationalError
 from social_django.utils import psa
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 logger=logging.getLogger(__file__)
 PaysTack =PayStackUtils()
 
@@ -261,19 +257,12 @@ def VerifySocialLogin(request, backend):
         user,_=User.objects.get_or_create(
             first_name=user.first_name,
             last_name=user.last_name,
-<<<<<<< HEAD
             email=user.email,
             is_active=True
 
             )
         print(user)
         
-=======
-            email=user.email
-
-            )
-        print(user)
->>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
         token=get_tokens_for_user(user)
         print(token)
         
