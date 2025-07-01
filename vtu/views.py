@@ -203,7 +203,10 @@ class VtuServicesView(APIView):
             if wallet.balance >= decimal.Decimal(float(amount)):
                 
                     if service_type =='AIRTIME':
+<<<<<<< HEAD
+=======
                         
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
                         transaction=transaction_instance(user=request.user,transaction_type=transaction_type,
                                                             status='processing',amount=decimal.Decimal(float(amount)),
@@ -242,8 +245,12 @@ class VtuServicesView(APIView):
                         
 
                     elif service_type =='DATA':
+<<<<<<< HEAD
+
+=======
             
                         
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
                         
                         # wallet.balance+= 2000
                         # wallet.save()
@@ -279,14 +286,21 @@ class VtuServicesView(APIView):
                         else:
                             return Response(
                                 {'data':{'status':response,"message":'','content':data}}, status = status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
+=======
                     
                     
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
                         
         
                     elif service_type == 'ELECTRICITY':
                         
+<<<<<<< HEAD
+                        
+=======
                         meter_type=request.data.get('meter_type')
                         meter_no=str(request.data.get('meter_no')).strip()
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
                         wallet=self.get_user_wallet(request)
 
                         transaction=transaction_instance(

@@ -26,5 +26,9 @@ urlpatterns = [
     path('virtual-card/',include('virtualcard.urls')),
     path('payment/',include('payment.urls')),
     path('vtu/',include('vtu.urls')),
+<<<<<<< HEAD
+    path('flight/',include('flight.urls')),
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
     re_path(r'^oauth/', include('drf_social_oauth2.urls', namespace='drf'))
 ]
