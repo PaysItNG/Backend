@@ -141,6 +141,11 @@ class TransactionsView(APIView):
         allObjects=AllObjects(request.user)
         transactions=allObjects['transaction']
         wallet=allObjects['wallet']
+    
+        for transaction in transactions:
+
+            transaction['user']=UserSerializer(User.objects.get(id=transaction['user']),many=False).data
+        
         
         month=request.GET.get('month',datetime.now().month)
         year=request.GET.get('year', datetime.now().year)
@@ -179,10 +184,14 @@ class BroadCastMailsView(APIView):
                     message,
                     '',
                 )
+                return Response({ 'message':'mail sent successfully' }, status=status.HTTP_200_OK)
             else:
                 return Response({
                     'message':'No email attached'
                 },status=status.HTTP_406_NOT_ACCEPTABLE)
+            
+        else:
+            pass
 
 @api_view(['GET'])
 def APIendpoints(request):
