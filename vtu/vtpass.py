@@ -226,9 +226,15 @@ class VtuServicesUtils():
         payload={
             'request_id':data['request_id'],
             'serviceID':data['service_id'],
+<<<<<<< HEAD
             'billersCode':str(data['meter_no']),
             'phone':str(data['phone_no']),
             'variation_code':data['meter_type'],
+=======
+            'billersCode':str(data['billers_code']),
+            'phone':str(data['phone_no']),
+            'variation_code':data['meter_no'],
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
             'amount':data['amount']
 
         }

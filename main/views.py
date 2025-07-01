@@ -13,7 +13,10 @@ from rest_framework import status
 from payment import models as pmodels
 from payment.serializers import DedicatedAccountSerializer
 from datetime import datetime
+<<<<<<< HEAD
 from userauth.signals import send_user_message
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
 
 def AllObjects(user):
@@ -141,11 +144,14 @@ class TransactionsView(APIView):
         allObjects=AllObjects(request.user)
         transactions=allObjects['transaction']
         wallet=allObjects['wallet']
+<<<<<<< HEAD
     
         for transaction in transactions:
 
             transaction['user']=UserSerializer(User.objects.get(id=transaction['user']),many=False).data
         
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
         
         month=request.GET.get('month',datetime.now().month)
         year=request.GET.get('year', datetime.now().year)
@@ -170,6 +176,7 @@ class TransactionsView(APIView):
                 return Response({'data':transactions_type,'amount':amount,'wallet':wallet},status=status.HTTP_200_OK)
 
 
+<<<<<<< HEAD
 class BroadCastMailsView(APIView):
     def post(self,request):
         subject=request.data.get('subject')
@@ -192,6 +199,9 @@ class BroadCastMailsView(APIView):
             
         else:
             pass
+=======
+
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
 @api_view(['GET'])
 def APIendpoints(request):

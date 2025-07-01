@@ -23,7 +23,10 @@ env = environ.Env()
 environ.Env.read_env()
 
 import cloudinary
+<<<<<<< HEAD
 from amadeus import Client
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
 
 
@@ -67,7 +70,10 @@ INSTALLED_APPS = [
     'virtualcard',
     'payment',
     'vtu',
+<<<<<<< HEAD
     'flight',
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
 
     'oauth2_provider',
@@ -277,8 +283,11 @@ VTPASS_TEST_PUB = env('VTpass_test_PublicKey').strip()
 VTPASS_TEST_SECRET=env("VTpass_test_SecretKey").strip()
 
 GSUB_KEY = env("GSUB_Key").strip()
+<<<<<<< HEAD
 AMADEUS_API_KEY=env('AMADEUS_API_KEY').strip()
 AMADEUS_SECRET=env('AMADEUS_SECRET').strip()
+=======
+>>>>>>> 7744b2a6f1a776c147598b80626db8c9250a4044
 
 
 DATA_DISCOUNT=0.5
