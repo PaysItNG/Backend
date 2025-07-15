@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
-from .utils import FlightUtils
+# from .utils import FlightUtils
 from rest_framework import status
 
 amadeus = Client(
@@ -16,7 +16,7 @@ amadeus = Client(
     client_secret=settings.AMADEUS_SECRET
 )
 
-amadeus_utils=FlightUtils()
+# amadeus_utils=FlightUtils()
 
 
 def get_city_airport_list(data):
@@ -44,18 +44,18 @@ class AirportLocationSearchView(APIView):
 
 
 
-class GetFlightOffersView(APIView):
-    def post(self,request):
+# class GetFlightOffersView(APIView):
+#     def post(self,request):
 
-        try:
-            data=request.data
-            response=amadeus_utils.search_offers(data=data)
+#         try:
+#             data=request.data
+#             response=amadeus_utils.search_offers(data=data)
 
-            return Response({
-                'data': response
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                'message':f'an error occured at {e}'
-            },status=status.HTTP_400_BAD_REQUEST)
+#             return Response({
+#                 'data': response
+#             }, status=status.HTTP_200_OK)
+#         except Exception as e:
+#             return Response({
+#                 'message':f'an error occured at {e}'
+#             },status=status.HTTP_400_BAD_REQUEST)
 
