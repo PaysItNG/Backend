@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import datetime,timedelta
 import os
+import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,9 +24,6 @@ env = environ.Env()
 environ.Env.read_env()
 
 import cloudinary
-from amadeus import Client
-
-
 
 cloudinary.config(
     cloud_name='ded3ejyc1',
@@ -37,14 +35,13 @@ cloudinary.config(
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm'
-
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-l7+vz2rxj1*%o^akej4cu#^)z@*-d6540j(8oy1^y1iz6@evqm")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG =  True
 
 ALLOWED_HOSTS = ["*"]
 
-# BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 # Application definition
 
 INSTALLED_APPS = [
@@ -58,6 +55,7 @@ INSTALLED_APPS = [
     'rest_framework',
      "corsheaders",
      "cloudinary",
+    'drf_yasg',
 
     'main',
     'userauth',
@@ -68,15 +66,12 @@ INSTALLED_APPS = [
     'payment',
     'vtu',
     'flight',
-
-
+    
     'oauth2_provider',
     'social_django',
     'drf_social_oauth2',
 
 ]
-
-
 
 
 
@@ -133,8 +128,8 @@ REST_FRAMEWORK = {
 # SIMPLEJWTSETUP
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES",760)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS",1)),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
@@ -144,30 +139,16 @@ SIMPLE_JWT = {
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# Read environment variables
+default_db_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
 
+DATABASE_URL = os.environ.get('DATABASE_URL', default=default_db_url)
 
-if env('PRODUCTION') == '1':
-     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': env('DB_NAME'),
-            'URL':env('DB_URL'),
-            'USER': env('DB_USER'),
-            'PASSWORD': env('DB_PASSWORD'),
-            'HOST': env('DB_HOST'),
-            'PORT': env('DB_PORT'),
-           
-        }
-    }
-    
-else:
-
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+}
+if DEBUG:
+    print(DEBUG,"Loaded DATABASE config:", DATABASES)
 
 
 
@@ -224,15 +205,15 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER='apaysit@gmail.com'
-EMAIL_HOST_PASSWORD='btio qhzc bids qbsf'
+EMAIL_HOST_USER= os.environ.get("MAIL_FROM","")
+EMAIL_HOST_PASSWORD=os.environ.get("MAIL_PASSWORD","")
 
 
 AUTHENTICATION_BACKENDS = (
     # Google  OAuth2
     'social_core.backends.google.GoogleOAuth2',
     # drf-social-oauth2
-
+    'userauth.custom_auth.EmailUsernameAuthBackend',
    'drf_social_oauth2.backends.DjangoOAuth2',
    'django.contrib.auth.backends.ModelBackend',
 )
@@ -253,8 +234,8 @@ SOCIAL_AUTH_PIPELINE = (
 
 
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '390818397275-fnsq2g53odn0k6hkb7cblatg371t2d1f.apps.googleusercontent.com'
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY","")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET =  os.environ.get("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET","")
 
 
 # Define SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE to get extra permissions from Google.
@@ -307,10 +288,11 @@ if not DEBUG:
     # and renames the files with unique names for each version to support long-term caching
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # STATICFILES_DIRS=[
 #     os.path.join(BASE_DIR,'static')
 # ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT=os.path.join(BASE_DIR,'static/media')
 

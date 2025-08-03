@@ -30,6 +30,7 @@ import random
 from django.utils import timezone
 from .signals import send_user_message
 from payment.utils import PayStackUtils
+from payment.models import DedicatedAccount
 from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,JSONParser
 from django.db import DatabaseError,IntegrityError,OperationalError
 from social_django.utils import psa
@@ -136,7 +137,12 @@ class SignupView(APIView):
             },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-               
+def get_bank_account_or_create(user):
+    account = DedicatedAccount.objects.filter(user=user)
+    if account.exists():
+        return True
+    return PayStackUtils.create_customer_and_virtual_account(user.email,user.first_name,user.last_name,user.phone, preferred_bank="sterling-bank")
+                  
 
 
 class VerifyOTPView(APIView):
@@ -175,29 +181,26 @@ class VerifyOTPView(APIView):
             user.is_active = True
             user.save()
             otp_instance.delete()
-            dva_account = PaysTack.create_customer_and_virtual_account(user.email,user.first_name,user.last_name,user.phone_number) 
+            get_bank_account_or_create(user)
             return Response({"message": "OTP verified successfully", },status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+
+
 class LoginView(APIView):
     permission_classes=[AllowAny]
     def post(self,request):
         email,password=request.data['email'],request.data['password']
-        # print(email,password)
-
         try:
             user=User.objects.get(email=str(email).strip().lower())
-            print(user)
 
             if user.check_password(password):
                 if user.is_active == True:
                     token=get_tokens_for_user(user)
                     serializer=UserSerializer(user,many=False).data
-                    # print(serializer['profile'])
                     serializer['profile']=UserProfileSerializer(
                         UserProfile.objects.get(id=serializer['profile']),many=False).data
-                   
+                    get_bank_account_or_create(user)
                     return Response({
                         'message':'logged in succesfully',
                         'logged_in':True,
@@ -244,44 +247,20 @@ class LoginView(APIView):
 def VerifySocialLogin(request, backend):
     scheme = request.is_secure() and "https" or "http"
     url=f'{requestUrl(request)}/oauth/convert-token/'
-    print(url)
     token=request.data.get('access_token')
-
-    user = request.backend.do_auth(token)
-    print(user,user.first_name)
-
-
-    if user:
-        # new_user=User.objects.get(user=user)
-        print(user)
-        user,_=User.objects.get_or_create(
-            first_name=user.first_name,
-            last_name=user.last_name,
-            email=user.email,
-            is_active=True
-
-            )
-        print(user)
+    data={
+        'grant_type':'convert_token',
+        'token':token,
+        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+        'backend':'google-oauth2',
         
-        token=get_tokens_for_user(user)
-        print(token)
-        
-        return Response(
-            {
-                'token': token,
-                'user':UserSerializer(user,many=False).data
-            },
-            status=status.HTTP_200_OK,
-            )
-    else:
-        return Response(
-            {
-                'errors': {
-                    'token': 'Invalid token'
-                    }
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    }
+
+    response=requests.post(url,data=data)
+    logger.debug(response)
+    return Response({
+        'data':response.json()
+    })
 
 
 class RequestVerifyPasswordChangeView(APIView):
