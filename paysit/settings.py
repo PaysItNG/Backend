@@ -128,8 +128,8 @@ REST_FRAMEWORK = {
 # SIMPLEJWTSETUP
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES",760)),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS",1)),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES",760))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS",1))),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
