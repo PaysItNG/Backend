@@ -7,7 +7,9 @@ import math
 from .vtpass import VtuServicesUtils
 from .utils import extract_size_name,add_commision,data_percentage_add
 from django.conf import settings
+
 from decimal import Decimal
+
 GSUB_KEY =settings.GSUB_KEY
 base_url ="https://gsubz.com/api"
 
@@ -16,6 +18,18 @@ headers = {
         'Authorization': f'Bearer {GSUB_KEY}',  
         'Content-Type': 'application/x-www-form-urlencoded'
     }
+
+returned_data= [
+            {
+                "displayName": "1GB - 7days",
+                "value": "166",
+                "price": 715,
+                "service": "mtn_sme",
+                "name": "MTN-SME-Data-",
+                "qty": "1GB"
+            },
+ ]
+            
 
 def extract_data_qty(string):
     parts = string.split('-')

@@ -48,10 +48,12 @@ def validate_phonenumber(number):
 base_url='https://sandbox.vtpass.com/api/'
 get_req_headers={
             'api-key':settings.VTPASS_TEST_APIKEY,
-            'public-key':settings.VTPASS_TEST_PUB
+            'public-key':settings.VTPASS_TEST_PUB,
+            'Content-Type': 'application/json'
         }
 
 post_req_headers={
+            'Content-Type': 'application/json',
             'api-key':settings.VTPASS_TEST_APIKEY,
             'secret-key':settings.VTPASS_TEST_SECRET
         }
