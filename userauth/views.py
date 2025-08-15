@@ -248,19 +248,42 @@ def VerifySocialLogin(request, backend):
     scheme = request.is_secure() and "https" or "http"
     url=f'{requestUrl(request)}/oauth/convert-token/'
     token=request.data.get('access_token')
-    data={
-        'grant_type':'convert_token',
-        'token':token,
-        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
-        'backend':'google-oauth2',
-        
-    }
 
-    response=requests.post(url,data=data)
-    logger.debug(response)
-    return Response({
-        'data':response.json()
-    })
+    user = request.backend.do_auth(token)
+    print(user,user.first_name)
+
+
+    if user:
+        # new_user=User.objects.get(user=user)
+        print(user)
+        user,_=User.objects.get_or_create(
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+            is_active=True
+
+            )
+        print(user)
+        
+        token=get_tokens_for_user(user)
+        print(token)
+        
+        return Response(
+            {
+                'token': token,
+                'user':UserSerializer(user,many=False).data
+            },
+            status=status.HTTP_200_OK,
+            )
+    else:
+        return Response(
+            {
+                'errors': {
+                    'token': 'Invalid token'
+                    }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class RequestVerifyPasswordChangeView(APIView):

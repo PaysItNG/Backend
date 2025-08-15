@@ -40,6 +40,7 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse, HttpResponse
 from decimal import Decimal
+from django.db import transaction
 
 stripe.api_key=settings.STRIPE_SECRET_KEY
 
@@ -60,91 +61,157 @@ def get_user_ip(request):
 
 
 
+logger = logging.getLogger(__name__)
+
+VIRTUAL_CARD_PRICE_USD = Decimal("3.00")
+
+
 class CreateVirtualCardView(APIView):
-    permission_classes=[IsAuthenticated]
-    authentication_classes=[JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
-    def get(self,request):
-      try:
-          card=Card.objects.get(user=request.user)
+    def get(self, request):
+        """
+        Check if the user already has an issued card. If not, inform them of cost.
+        """
+        try:
+            card = Card.objects.get(user=request.user)
+        except Card.DoesNotExist:
+            return Response(
+                {
+                    "message": f'Virtual card cost "${VIRTUAL_CARD_PRICE_USD}"',
+                    "issued": False,
+                    "created": False,
+                },
+                status=status.HTTP_200_OK,
+            )
 
-          if card.issued == True:
-             return Response({
-                'message':'Card already assigned to user',
-                'issued':True,
-                'created':True
-             },status=status.HTTP_200_OK)
-          else:
-              return Response({
-                'message':'Card not issued Contact support for assistance','issued':False,'created':True
-             },status=status.HTTP_200_OK)
-      
-      except:
-         price=3
-         return Response({
-            'message':'Virtual card cost f"${price}" ','issued':False,'created':False,},status=status.HTTP_200_OK)
-      
+        if card.issued:
+            return Response(
+                {
+                    "message": "Card already assigned to user",
+                    "issued": True,
+                    "created": True,
+                    "data": Cardserializer(card).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {
+                    "message": "Card not issued. Contact support for assistance",
+                    "issued": False,
+                    "created": True,
+                    "data": Cardserializer(card).data,
+                },
+                status=status.HTTP_200_OK,
+            )
 
-    def post(self,request,*args,**kwargs):
-            ip_addr=get_user_ip(request=request)
+    def post(self, request, *args, **kwargs):
+        """
+        Issue a virtual card if the user has sufficient USD balance and doesn't already have one issued.
+        """
+        ip_addr = get_user_ip(request=request)
 
-            price=3
-            try:
-               wallet=Wallet.objects.get(user=request.user)
-               card,_=Card.objects.get_or_create(user=request.user)
+        try:
+            wallet = Wallet.objects.get(user=request.user)
+        except Wallet.DoesNotExist:
+            return Response(
+                {"data": {}, "message": "Wallet not found for user"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-               if round(Decimal(price),2) < wallet.usd_balance:
+        # Ensure card object exists (but don't assume it's issued)
+        card, _ = Card.objects.get_or_create(user=request.user)
 
-                  data = {
-                  "type": "individual",
-                  "name": f"{request.user.first_name} {request.user.last_name}",
-                  "email": f"{request.user.email}",
-                  "phone_number": "+18888675322",
-                  "billing[address][line1]": "1234 Main Street",
-                  "billing[address][city]": "San Francisco",
-                  "billing[address][state]": "CA",
-                  "billing[address][country]": "US",
-                  "billing[address][postal_code]": "94111",
-                  "individual[first_name]":request.user.first_name,
-                  "individual[last_name]":request.user.last_name,
-                  "individual[card_issuing][user_terms_acceptance][date]":int(timezone.now().timestamp()),
-                  "individual[card_issuing][user_terms_acceptance][ip]":ip_addr,
-                  "spending_controls[allowed_categories]" :None,
-                  "spending_controls[spending_limits][0][amount]":100000,
-                  "spending_controls[spending_limits][0][interval]":'daily',
-                  "spending_controls[spending_limits_currency]":'USD',
-                  "spending_controls[blocked_merchant_countries][0]":[],
-                  "spending_controls[allowed_categories][0]":['general_services'],
-                  "spending_controls[allowed_categories][1]":['advertising_services'],
-                  
+        if card.issued:
+            return Response(
+                {
+                    "message": "Card already issued to user",
+                    "data": Cardserializer(card).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Compare balances: need wallet.usd_balance >= price
+        try:
+            user_balance = Decimal(wallet.usd_balance)
+        except Exception as e:
+            logger.error("Invalid wallet balance for user %s: %s", request.user.id, e)
+            return Response(
+                {"data": {}, "message": "Invalid wallet balance"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user_balance < VIRTUAL_CARD_PRICE_USD:
+            return Response(
+                {"data": {}, "message": "Insufficient USD balance"},
+                status=status.HTTP_406_NOT_ACCEPTABLE,
+            )
+
+        # Prepare data for Stripe card holder creation
+        payload = {
+            "type": "individual",
+            "name": f"{request.user.first_name} {request.user.last_name}",
+            "email": request.user.email,
+            "phone_number": "+18888675322",  # consider making this dynamic / user-sourced
+            "billing[address][line1]": "1234 Main Street",
+            "billing[address][city]": "San Francisco",
+            "billing[address][state]": "CA",
+            "billing[address][country]": "US",
+            "billing[address][postal_code]": "94111",
+            "individual[first_name]": request.user.first_name,
+            "individual[last_name]": request.user.last_name,
+            "individual[card_issuing][user_terms_acceptance][date]": int(timezone.now().timestamp()),
+            "individual[card_issuing][user_terms_acceptance][ip]": ip_addr,
+            "spending_controls[allowed_categories]": None,
+            "spending_controls[spending_limits][0][amount]": 100000,
+            "spending_controls[spending_limits][0][interval]": "daily",
+            "spending_controls[spending_limits_currency]": "USD",
+            "spending_controls[blocked_merchant_countries][0]": [],
+            "spending_controls[allowed_categories][0]": ["general_services"],
+            "spending_controls[allowed_categories][1]": ["advertising_services"],
+        }
+
+        try:
+            with transaction.atomic():
+                res = StripePaymentUtils.create_card_holder(data=payload)
+
+                # Validate/parse the Stripe event if needed
+                try:
+                    byte_array = bytearray(json.dumps(res).encode("utf-8"))
+                    event = stripe.Event.construct_from(json.loads(byte_array), settings.STRIPE_SECRET_KEY)
+                    # Optionally inspect event to confirm success
+                except Exception as e_event:
+                    logger.warning("Failed to construct Stripe event: %s", e_event)
+                    # proceed, depending on whether this is critical
+
+                # Mark card as issued (you may want to include additional data from `res`)
+                card.issued = True
+                # e.g., card.stripe_id = res.get("id")  # if that makes sense
+                card.save(update_fields=["issued"])
+
+                # Deduct price from wallet (if that’s the intended behavior)
+                wallet.usd_balance = user_balance - VIRTUAL_CARD_PRICE_USD
+                wallet.save(update_fields=["usd_balance"])
+
+                return Response(
+                    {
+                        "data": res,
+                        "message": "Card successfully issued",
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+        except Exception as e:
+            logger.error("Error issuing virtual card for user %s: %s", request.user.id, e)
+            return Response(
+                {"data": {}, "message": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        
 
 
-                  }
-                  
-                  if card.issued == True:
-                     return Response({'message':'Card already issued to user','data':Cardserializer(card).data,},status=status.HTTP_200_OK)
-                  
-                  else:
-
-                     res=StripePaymentUtils.create_card_holder(data=data)
-                     byte_array=bytearray(json.dumps(res).encode('utf-8'))
-                     event = stripe.Event.construct_from(json.loads(byte_array), settings.STRIPE_SECRET_KEY)
-                     # print('EVENT ',event)
-      
-                     return Response({
-                           'data':res,
-                           'message':'card successfully issued' },status=status.HTTP_201_CREATED)
-               else:
-
-                  return  Response({
-                        'data':{},
-                        'message':'insufficient USD balance' },status=status.HTTP_406_NOT_ACCEPTABLE)
-               
-            except Exception as e:
-               return  Response({
-                        'data':{},
-                        'message':f'an error occured at {e}' },status=status.HTTP_404_NOT_FOUND)
-
+        
 
 class UpdateCardholderView(APIView):
    permission_classes=[IsAuthenticated]
@@ -352,10 +419,13 @@ class GenerateEphemeralKeys(APIView):
 def virtualcard_webhook_view(request):
   payload = request.body
   event = None
+  print(payload)
 
   try:
     event = stripe.Event.construct_from(json.loads(payload), settings.STRIPE_SECRET_KEY)
+    print(event)
   except ValueError as e:
+    print(e)
     # Invalid payload
     return HttpResponse(status=400)
 
