@@ -332,8 +332,9 @@ class Transaction(models.Model):
         ('pending', 'pending'),
         ('completed', 'completed'),
         ('processing', 'processing'),
+      
         ('refunded', 'refunded'),
-        ('failed', 'failed'),
+        ('failed', 'Failed'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     to_from =models.CharField(max_length=15,null=True,blank=True)

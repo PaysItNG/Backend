@@ -7,7 +7,9 @@ import math
 from .vtpass import VtuServicesUtils
 from .utils import extract_size_name,add_commision,data_percentage_add
 from django.conf import settings
+
 from decimal import Decimal
+
 GSUB_KEY =settings.GSUB_KEY
 base_url ="https://gsubz.com/api"
 
@@ -16,6 +18,18 @@ headers = {
         'Authorization': f'Bearer {GSUB_KEY}',  
         'Content-Type': 'application/x-www-form-urlencoded'
     }
+
+returned_data= [
+            {
+                "displayName": "1GB - 7days",
+                "value": "166",
+                "price": 715,
+                "service": "mtn_sme",
+                "name": "MTN-SME-Data-",
+                "qty": "1GB"
+            },
+ ]
+            
 
 def extract_data_qty(string):
     parts = string.split('-')
@@ -128,19 +142,23 @@ def buy_data(data):
 
    
 
-def buy_airtime(data,txn):
-    payload={'serviceID': data['network'].lower(),
+def buy_airtime(data):
+    payload={'serviceID': data['service_id'],
     'api': GSUB_KEY,
     'amount': data['amount'],
-    'phone': data['phone'],
-    'requestID': txn['txn_id']}   
+    'phone': data['phone_no'],
+    'requestID':data['request_id']}
     try: 
         response = requests.post(f'{base_url}/pay/',headers = headers,data=payload, files=[])
         result = response.json()
-        if result['code'] ==200:
-            return True
+        status ="success"
+        if result['code'] ==200 and result['status'] !="failed":
+            status ="failed"
+        elif result['status']=="failed":
+            status = 'failed'
         else:
-            return False
+            status ="pending"
+        return status
     except Exception as e:
         return False
   

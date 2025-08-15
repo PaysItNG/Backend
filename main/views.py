@@ -211,12 +211,10 @@ def APIendpoints(request):
                'ephemeral/keys/','payment/webhook/', 'add/naira/','add/dollar/','webhook/',"more/",'authorization/webhook/'],
              ],
 
-           
              [ 'payment/',
               [
-                 "paystack-webhook/", 'api/banks-list/','bank/transfer/',
-                 'create-bank-accounts/', 'retrieve/user/account-list/',
-                  
+                 "api/paystack-webhook/", 'api/banks-list/','api/bank/transfer/',
+                 'api/create-bank-accounts/', 'api/retrieve/user/account-list/',                 
               ]
               
                  
