@@ -181,7 +181,7 @@ class VerifyOTPView(APIView):
             user.is_active = True
             user.save()
             otp_instance.delete()
-            get_bank_account_or_create(user)
+            # get_bank_account_or_create(user)
             return Response({"message": "OTP verified successfully", },status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
