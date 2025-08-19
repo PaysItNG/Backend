@@ -47,7 +47,6 @@ class SendRoleInvite(APIView):
         scheme = request.is_secure() and "https" or "http"
         url=f'{scheme}://{request.get_host()}/role/invite/accept'
 
-        print(url)
         
         role_invite=mmodels.RoleInvite.objects.create(
             email=email,

@@ -58,7 +58,7 @@ def check_balance():
 
 def affect_data_price(resulting_response,provider):
     all_plans = []
-    print(resulting_response)
+    # print(resulting_response)
     for plan_category in resulting_response:
         if plan_category and 'plans' in plan_category:
             for plan in plan_category['plans']:
@@ -122,12 +122,12 @@ def buy_data(data):
     'phone': data['phone_no'],
     'requestID':data['request_id']
     }
-    print(payload)
+    # print(payload)
     
     try:
         response = requests.post(f'{base_url}/pay/',headers = headers,data=payload, )
         result = response.json()
-        print(result)
+        # print(result)
         status ="success"
         if result['code'] ==200 and result['status'] !="failed":
             status ="failed"
@@ -166,11 +166,11 @@ def buy_airtime(data):
 def verify_transaction_status(request_id):
     payload={'requestID': request_id,
             'api': GSUB_KEY}
-    print(request_id)
+    # print(request_id)
     try:
         response = requests.post(f'{base_url}/verify/',headers = headers,data=payload, files=[])
         result = response.json()
-        print('inside gsub ', result)
+        # print('inside gsub ', result)
         if result["code"]== "404":
             return False
 
@@ -185,6 +185,6 @@ def verify_transaction_status(request_id):
         
         
     except Exception as e:
-            print(f"VTPass verification error: {e}")
+            # print(f"VTPass verification error: {e}")
             return "pending"
     

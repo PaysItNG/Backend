@@ -5,6 +5,7 @@ stripe.api_key=settings.STRIPE_SECRET_KEY
 api_key=settings.STRIPE_SECRET_KEY
 import requests
 import datetime
+from decimal import Decimal
 
 
 base_url='https://api.stripe.com'
@@ -64,13 +65,14 @@ class StripePaymentUtils():
     
 
     @staticmethod
-    def create_card(data,email):
+    def create_card(data,email,VIRTUAL_CARD_PRICE_USD):
         """
             create a virtual card for user and assign as cardholder       
         """
 
         url=f"{base_url}/v1/issuing/cards"
         card,_=Card.objects.get_or_create(user__email=email)
+        wallet=Wallet.objects.get(user__email=email)
        
         
         res=stripe.issuing.Card.create(
@@ -102,6 +104,11 @@ class StripePaymentUtils():
         card.card_brand=response['brand']
         card.last_four=response['last4']
         card.status=response['status']
+       
+      
+        # Deduct price from wallet (if that’s the intended behavior)
+        wallet.usd_balance = Decimal(wallet.usd_balance) - VIRTUAL_CARD_PRICE_USD
+        wallet.save(update_fields=["usd_balance"])
         
         card.save()
        
