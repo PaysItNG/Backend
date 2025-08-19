@@ -48,7 +48,9 @@ class PayStackUtils:
         if response.status_code != 200:  
             return {'error': response.json().get("message", "An error occurred.")}, response.status_code  
         return response.json()
-    def create_customer_and_virtual_account(self,email,first_name,last_name,phone, preferred_bank="wema-bank"):
+    
+    # @staticmethod
+    def create_customer_and_virtual_account(self,email,first_name,last_name,phone,preferred_bank="wema-bank"):
         """
         Create a dedicated virtual account (NUBAN) for an existing Paystack customer.
         """

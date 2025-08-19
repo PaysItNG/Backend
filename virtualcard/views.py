@@ -176,6 +176,7 @@ class CreateVirtualCardView(APIView):
         try:
             with transaction.atomic():
                 res = StripePaymentUtils.create_card_holder(data=payload)
+                print(res)
 
                 # Validate/parse the Stripe event if needed
                 try:
@@ -186,14 +187,7 @@ class CreateVirtualCardView(APIView):
                     logger.warning("Failed to construct Stripe event: %s", e_event)
                     # proceed, depending on whether this is critical
 
-                # Mark card as issued (you may want to include additional data from `res`)
-                card.issued = True
-                # e.g., card.stripe_id = res.get("id")  # if that makes sense
-                card.save(update_fields=["issued"])
-
-                # Deduct price from wallet (if that’s the intended behavior)
-                wallet.usd_balance = user_balance - VIRTUAL_CARD_PRICE_USD
-                wallet.save(update_fields=["usd_balance"])
+                
 
                 return Response(
                     {
@@ -419,7 +413,7 @@ class GenerateEphemeralKeys(APIView):
 def virtualcard_webhook_view(request):
   payload = request.body
   event = None
-  print(payload)
+  print('CARD ',payload)
 
   try:
     event = stripe.Event.construct_from(json.loads(payload), settings.STRIPE_SECRET_KEY)
@@ -438,7 +432,7 @@ def virtualcard_webhook_view(request):
   user_email=event['data']['object']['email']
 
   if event.type == 'issuing_cardholder.created':
-   StripePaymentUtils.create_card(data=data,email=user_email)
+   StripePaymentUtils.create_card(data=data,email=user_email,VIRTUAL_CARD_PRICE_USD=VIRTUAL_CARD_PRICE_USD)
 
   if event.type == 'issuing_cardholder.updated':
      StripePaymentUtils.update_card(data=data,email=user_email)

@@ -34,6 +34,7 @@ from payment.models import DedicatedAccount
 from rest_framework.parsers import FileUploadParser,FormParser,MultiPartParser,JSONParser
 from django.db import DatabaseError,IntegrityError,OperationalError
 from social_django.utils import psa
+from django.contrib.auth import authenticate
 
 logger=logging.getLogger(__file__)
 PaysTack =PayStackUtils()
@@ -141,7 +142,7 @@ def get_bank_account_or_create(user):
     account = DedicatedAccount.objects.filter(user=user)
     if account.exists():
         return True
-    return PayStackUtils.create_customer_and_virtual_account(user.email,user.first_name,user.last_name,user.phone, preferred_bank="sterling-bank")
+    return PaysTack.create_customer_and_virtual_account(user.email,user.first_name,user.last_name,user.phone_number,preferred_bank="sterling-bank")
                   
 
 
