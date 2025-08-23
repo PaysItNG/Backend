@@ -182,7 +182,7 @@ class VerifyOTPView(APIView):
             user.is_active = True
             user.save()
             otp_instance.delete()
-            # get_bank_account_or_create(user)
+            get_bank_account_or_create(user)
             return Response({"message": "OTP verified successfully", },status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -201,7 +201,7 @@ class LoginView(APIView):
                     serializer=UserSerializer(user,many=False).data
                     serializer['profile']=UserProfileSerializer(
                         UserProfile.objects.get(id=serializer['profile']),many=False).data
-                    #get_bank_account_or_create(user)
+                    get_bank_account_or_create(user)
                     return Response({
                         'message':'logged in succesfully',
                         'logged_in':True,
@@ -267,6 +267,7 @@ def VerifySocialLogin(request, backend):
         print(user)
         
         token=get_tokens_for_user(user)
+        get_bank_account_or_create(user)
         print(token)
         
         return Response(
