@@ -6,9 +6,9 @@ from main.models import User
 
 class DedicatedAccount(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,null=True,blank=True, related_name="dedicated_account_user")
-    bank_name = models.CharField(max_length=100)
-    account_number = models.CharField(max_length=15, unique=True)
-    account_name = models.CharField(max_length=255)
+    bank_name = models.CharField(max_length=100,null=True,blank=True)
+    account_number = models.CharField(max_length=15,null=True,blank=True, unique=True)
+    account_name = models.CharField(max_length=255,null=True,blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
