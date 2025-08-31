@@ -117,19 +117,23 @@ class VtuServicesUtils():
          
         # request_id=generate_vtu_request_id(10)
         
+        
         payload={
-            'request_id':data['request_id'],
-            'serviceID':data['service_id'],
-            'amount':data['amount'],
+            'request_id':str(data.get('request_id')),
+            'serviceID':str(data['service_id']),
+            'amount':int(data['amount']),
             'phone':str(data['phone_no'])
 
         }
+        print(payload)
         
         
         
         try:
-            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res=requests.post(url=self.url,headers=post_req_headers,json=payload)
+            # print(res.json())
             res =res.json()
+            
            
             status ='success'
             if res['content']['transactions']['status'] == 'delivered':
@@ -153,8 +157,8 @@ class VtuServicesUtils():
         }
         print('in vtpass ',payload)
         try:
-            res=requests.post(url=f'{base_url}requery',headers=post_req_headers,data=payload)
-            print(res.json())
+            res=requests.post(url=f'{base_url}requery',headers=post_req_headers,json=payload)
+            # print(res.json())
 
             response =res.json()
             
@@ -177,14 +181,14 @@ class VtuServicesUtils():
         print(data)      
         payload={
             'request_id':data['request_id'],
-            'serviceID':data['service_id'],
+            'serviceID':f"{data['service_id']}-data",
             'billersCode':str(data['phone_no']),
             'phone':str(data['phone_no']),
             'variation_code':data['plan_id'],
             'amount': float(data['price'])/float(1+(data_percentage_add/100))
         }
         try:
-            res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+            res=requests.post(url=self.url,headers=post_req_headers,json=payload)
             res =res.json()
             print(res)
             status ='success'
@@ -213,7 +217,7 @@ class VtuServicesUtils():
             'serviceID':service_id,
             'type':service_type
         }
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        res=requests.post(url=url,headers=post_req_headers,json=payload)
 
         return res.json()
     
@@ -234,7 +238,7 @@ class VtuServicesUtils():
             'amount':data['amount']
 
         }
-        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        res=requests.post(url=self.url,headers=post_req_headers,json=payload)
         data=res.json() 
 
         try:
@@ -280,7 +284,7 @@ class VtuServicesUtils():
 
         print(payload)
 
-        res=requests.post(url=self.url,headers=post_req_headers,data=payload)
+        res=requests.post(url=self.url,headers=post_req_headers,json=payload)
 
         data=res.json() 
         print(data)

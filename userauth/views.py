@@ -139,6 +139,7 @@ class SignupView(APIView):
         
 
 def get_bank_account_or_create(user):
+    
     account = DedicatedAccount.objects.filter(user=user)
     if account.exists():
         return True
@@ -201,7 +202,7 @@ class LoginView(APIView):
                     serializer=UserSerializer(user,many=False).data
                     serializer['profile']=UserProfileSerializer(
                         UserProfile.objects.get(id=serializer['profile']),many=False).data
-                    get_bank_account_or_create(user)
+                    # get_bank_account_or_create(user)
                     return Response({
                         'message':'logged in succesfully',
                         'logged_in':True,
