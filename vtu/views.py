@@ -240,7 +240,7 @@ class VtuServicesView(APIView):
 
                         
 
-                    elif service_type =='DATA':
+                    if service_type =='DATA':
                         
                         # wallet.balance+= 2000
                         # wallet.save()
@@ -278,7 +278,7 @@ class VtuServicesView(APIView):
                                 {'data':{'status':response,"message":'','content':data}}, status = status.HTTP_400_BAD_REQUEST)
                         
         
-                    elif service_type == 'ELECTRICITY':
+                    if service_type == 'ELECTRICITY':
                         
                         
                         wallet=self.get_user_wallet(request)
@@ -324,7 +324,7 @@ class VtuServicesView(APIView):
                     
                     
 
-                    elif service_type == 'TV':
+                    if service_type == 'TV':
                         transaction=transaction_instance(
                             user=request.user,
                             transaction_type=transaction_type,status='processing',
