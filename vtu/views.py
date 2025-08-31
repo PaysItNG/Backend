@@ -261,14 +261,15 @@ class VtuServicesView(APIView):
                             "VTPASS":VtuPass.PayForDataService,
                         }
                         response = providers_dict[provider](data)
+                        print(response)
                         
                         wallet.balance -= decimal.Decimal(float(data['price']))
                         wallet.save()
                         transaction.status=response
                         transaction.save()
                         data=TransactionSerializer(transaction).data
-                        if response=='success':
-                            transaction.status="completed"
+                        if response=='completed':
+                            transaction.status=response
                             transaction.save()
                             return Response(
                                 {'data':{'status':response,"message":'ok','content':data},}, status = status.HTTP_200_OK
