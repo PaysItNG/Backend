@@ -54,6 +54,7 @@ class PayStackUtils:
         """
         Create a dedicated virtual account (NUBAN) for an existing Paystack customer.
         """
+        
         payload = {
         "email":email,
         "first_name":first_name,
@@ -67,10 +68,12 @@ class PayStackUtils:
                                  proxies={"http": None, "https": None},
                                  headers=self.headers, json=payload)
         
+        print(response.json())
         if response.status_code != 200:  
             #return {'error': response.json().get("message", "An error occurred.")}, response.status_code  
             return False
         data = response.json()
+        print(data)
         DedicatedAccount.objects.create(user=user,
                                      bank_name= data['data']['bank'],
                                      account_number=data['data']['account_number'],

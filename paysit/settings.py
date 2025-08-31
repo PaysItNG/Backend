@@ -141,7 +141,7 @@ SIMPLE_JWT = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 
-if env('PRODUCTION') == '1':
+if env('PRODUCTION') == '0':
      DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',
