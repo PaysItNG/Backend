@@ -238,7 +238,9 @@ class VtuServicesUtils():
             'amount':data['amount']
 
         }
+        print(payload)
         res=requests.post(url=self.url,headers=post_req_headers,json=payload)
+        print(res.json())
         data=res.json() 
 
         try:
