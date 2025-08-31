@@ -178,7 +178,7 @@ class VtuServicesUtils():
 
 
     def PayForDataService(self,data): 
-        print(data)      
+        # print(data)      
         payload={
             'request_id':data['request_id'],
             'serviceID':f"{data['service_id']}-data",
@@ -190,8 +190,8 @@ class VtuServicesUtils():
         try:
             res=requests.post(url=self.url,headers=post_req_headers,json=payload)
             res =res.json()
-            print(res)
-            status ='success'
+      
+            status ='pending'
             if res['content']['transactions']['status'] == 'delivered':
                 status ="completed"
             elif res['content']['transactions']['status'] == 'pending':
@@ -240,7 +240,7 @@ class VtuServicesUtils():
         }
         print(payload)
         res=requests.post(url=self.url,headers=post_req_headers,json=payload)
-        print(res.json())
+        # print(res.json())
         data=res.json() 
 
         try:
