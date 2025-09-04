@@ -317,7 +317,7 @@ class VtuServicesView(APIView):
                             ).start()
 
                             return Response({'data':TransactionSerializer(transaction).data,
-                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
+                                                'message':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
 
                         else:
                             return Response({'data':TransactionSerializer(transaction).data,
