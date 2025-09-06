@@ -396,29 +396,41 @@ class VerifyNumberView(APIView):
                 response=VtuPass.VerifyMeterNumber(billers_code=meter_no,
                                                             service_id=service_id,
                                                             service_type=service_type
-                                                            ) 
+                                                            )
+                if 'WrongBillersCode' in response['content']:
+                    if response['content']['WrongBillersCode']== True:
+                        return Response({
+                            'data':{},
+                            'message':response['content']['error']
+                        }, status=status.HTTP_200_OK)
+                else:
+
+                    
+                    return Response({
+                        'data':response['content']
+                    },status=status.HTTP_200_OK)
+             
             elif service_type.lower() in tv_services:
                 card_no=str(request.data.get('card_no')).strip()
                 response=VtuPass.VerifySmartCardNumber(card_number=card_no,service_id=service_id)
+                if 'WrongBillersCode' in response['content']:
+                    if response['content']['WrongBillersCode']== True:
+                        return Response({
+                            'data':{},
+                            'message':response['content']['error']
+                        }, status=status.HTTP_200_OK)
+                else:
+
+                    
+                    return Response({
+                        'data':response['content']
+                    },status=status.HTTP_200_OK)
             else:
                 return Response({
                     'message':'Invalid service ID'
                 },status=status.HTTP_406_NOT_ACCEPTABLE)
 
-            
-            if 'WrongBillersCode' in response['content']:
-                if response['content']['WrongBillersCode']== True:
-                    return Response({
-                        'data':{},
-                        'message':response['content']['error']
-                    }, status=status.HTTP_200_OK)
-            else:
-
-                
-                return Response({
-                    'data':response['content']
-                },status=status.HTTP_200_OK)
-                        
+                              
                 
         except Exception as e:
             return Response({
