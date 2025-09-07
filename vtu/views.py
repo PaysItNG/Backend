@@ -397,12 +397,15 @@ class VerifyNumberView(APIView):
                                                             service_id=service_id,
                                                             service_type=service_type
                                                             )
-                if 'WrongBillersCode' in response['content']:
-                    if response['content']['WrongBillersCode']== True:
-                        return Response({
-                            'data':{},
-                            'message':response['content']['error']
-                        }, status=status.HTTP_200_OK)
+                
+                print('DATA', response)
+               
+                if 'WrongBillersCode' in response['content'] and response['content']['WrongBillersCode']== True:
+                    return Response({
+                        'data':{},
+                        'message':response['content']['error']
+                    }, status=status.HTTP_200_OK)
+                    
                 else:
 
                     
@@ -413,12 +416,12 @@ class VerifyNumberView(APIView):
             elif service_type.lower() in tv_services:
                 card_no=str(request.data.get('card_no')).strip()
                 response=VtuPass.VerifySmartCardNumber(card_number=card_no,service_id=service_id)
-                if 'WrongBillersCode' in response['content']:
-                    if response['content']['WrongBillersCode']== True:
-                        return Response({
-                            'data':{},
-                            'message':response['content']['error']
-                        }, status=status.HTTP_200_OK)
+                if 'WrongBillersCode' in response['content'] and response['content']['WrongBillersCode']== True:
+                    
+                    return Response({
+                        'data':{},
+                        'message':response['content']['error']
+                    }, status=status.HTTP_200_OK)
                 else:
 
                     

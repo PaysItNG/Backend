@@ -213,7 +213,7 @@ class VtuServicesUtils():
     def VerifyMeterNumber(self,billers_code,service_id,service_type='prepaid'):
         url=f'{base_url}merchant-verify'
         payload={
-            'billersCode':int(billers_code),
+            'billersCode':str(billers_code).strip(),
             'serviceID':service_id,
             'type':service_type
         }
