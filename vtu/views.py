@@ -404,7 +404,7 @@ class VerifyNumberView(APIView):
                     return Response({
                         'data':{},
                         'message':response['content']['error']
-                    }, status=status.HTTP_200_OK)
+                    }, status=status.HTTP_403_FORBIDDEN)
                     
                 else:
 
@@ -421,7 +421,7 @@ class VerifyNumberView(APIView):
                     return Response({
                         'data':{},
                         'message':response['content']['error']
-                    }, status=status.HTTP_200_OK)
+                    }, status=status.HTTP_403_FORBIDDEN)
                 else:
 
                     
