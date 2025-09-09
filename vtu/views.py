@@ -406,9 +406,13 @@ class VerifyNumberView(APIView):
                         'message':response['content']['error']
                     }, status=status.HTTP_403_FORBIDDEN)
                     
+                elif response['code'] == '000':
+                    return Response({
+                        'data':response['content']
+                    },status=status.HTTP_403_FORBIDDEN)
+                
                 else:
 
-                    
                     return Response({
                         'data':response['content']
                     },status=status.HTTP_200_OK)
@@ -416,15 +420,20 @@ class VerifyNumberView(APIView):
             elif service_type.lower() in tv_services:
                 card_no=str(request.data.get('card_no')).strip()
                 response=VtuPass.VerifySmartCardNumber(card_number=card_no,service_id=service_id)
+                print('DATA', response)
                 if 'WrongBillersCode' in response['content'] and response['content']['WrongBillersCode']== True:
                     
                     return Response({
                         'data':{},
                         'message':response['content']['error']
                     }, status=status.HTTP_403_FORBIDDEN)
+                elif response['code'] == '000':
+                    return Response({
+                        'data':response['content']
+                    },status=status.HTTP_403_FORBIDDEN)
+                
                 else:
 
-                    
                     return Response({
                         'data':response['content']
                     },status=status.HTTP_200_OK)
