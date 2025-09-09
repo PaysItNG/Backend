@@ -267,7 +267,7 @@ class VtuServicesUtils():
         }
 
 
-        res=requests.post(url=url,headers=post_req_headers,data=payload)
+        res=requests.post(url=url,headers=post_req_headers,json=payload)
         return res.json()
     
     def PayForTvService(self,data):
