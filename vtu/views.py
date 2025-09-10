@@ -403,13 +403,16 @@ class VerifyNumberView(APIView):
                 if 'WrongBillersCode' in response['content'] and response['content']['WrongBillersCode']== True:
                     return Response({
                         'data':{},
+                        'verified':False,
                         'message':response['content']['error']
-                    }, status=status.HTTP_403_FORBIDDEN)
+                    }, status=status.HTTP_200_OK)
                     
-                elif response['code'] == '000':
+                elif 'error' in response['content']:
                     return Response({
-                        'data':response['content']
-                    },status=status.HTTP_403_FORBIDDEN)
+                        'data':response['content'],
+                        'verified':False,
+                        'message':response['content']['error']
+                    },status=status.HTTP_200_OK)
                 
                 else:
 
@@ -425,17 +428,21 @@ class VerifyNumberView(APIView):
                     
                     return Response({
                         'data':{},
-                        'message':response['content']['error']
-                    }, status=status.HTTP_403_FORBIDDEN)
+                        'verified':False,
+                        'message':f"The {service_type} Smartcard Number you entered may be invalid, Please check and only proceed if you are sure it's valid."
+                    }, status=status.HTTP_200_OK)
                 elif 'error' in response['content']:
                     return Response({
-                        'data':response['content']
-                    },status=status.HTTP_403_FORBIDDEN)
+                        'data':response['content'],
+                        'verified':False,
+                        'message':f"The {service_type} Smartcard Number you entered may be invalid, Please check and only proceed if you are sure it's valid."
+                    },status=status.HTTP_200_OK)
                 
                 else:
 
                     return Response({
                         'data':response['content']
+                        
                     },status=status.HTTP_200_OK)
             else:
                 return Response({
