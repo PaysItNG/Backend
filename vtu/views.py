@@ -406,7 +406,7 @@ class VerifyNumberView(APIView):
                         'message':response['content']['error']
                     }, status=status.HTTP_403_FORBIDDEN)
                     
-                elif response['code'] == '000':
+                elif 'error' in response['content']:
                     return Response({
                         'data':response['content']
                     },status=status.HTTP_403_FORBIDDEN)
