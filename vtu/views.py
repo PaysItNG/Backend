@@ -408,7 +408,8 @@ class VerifyNumberView(APIView):
                     
                 elif 'error' in response['content']:
                     return Response({
-                        'data':response['content']
+                        'data':response['content'],
+                        'message':response['content']['error']
                     },status=status.HTTP_403_FORBIDDEN)
                 
                 else:
@@ -425,17 +426,19 @@ class VerifyNumberView(APIView):
                     
                     return Response({
                         'data':{},
-                        'message':response['content']['error']
+                        'message':f"The {service_type} Smartcard Number you entered may be invalid, Please check and only proceed if you are sure it's valid."
                     }, status=status.HTTP_403_FORBIDDEN)
                 elif 'error' in response['content']:
                     return Response({
-                        'data':response['content']
+                        'data':response['content'],
+                        'message':f"The {service_type} Smartcard Number you entered may be invalid, Please check and only proceed if you are sure it's valid."
                     },status=status.HTTP_403_FORBIDDEN)
                 
                 else:
 
                     return Response({
                         'data':response['content']
+                        
                     },status=status.HTTP_200_OK)
             else:
                 return Response({
