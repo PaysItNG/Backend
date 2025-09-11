@@ -307,7 +307,7 @@ class VtuServicesView(APIView):
                             transaction.status= res_status
                             transaction.save()
                             data=TransactionSerializer(transaction).data
-                            return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
+                            return Response({'data':data,'message':res_status,'pin':res},status=status.HTTP_200_OK)
 
                         elif res_status == 'failed':
                             transaction.status= res_status
