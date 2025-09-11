@@ -313,7 +313,7 @@ class VtuServicesView(APIView):
                             data['token']=data['raw_response']['token']
                             data['units']=data['raw_response']['units']
                             data['customer_name']=data['raw_response']['customerName']
-                            data['customer_name']=data['raw_response']['customerName']
+                            data['customer_address']=data['raw_response']['customerAddress']
                             data['meter_no']=data['raw_response']['meterNumber']
                             del data['raw_response']
                             return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
