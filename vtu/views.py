@@ -417,7 +417,8 @@ class VerifyNumberView(APIView):
                 else:
 
                     return Response({
-                        'data':response['content']
+                        'data':response['content'],
+                        'verified':True,
                     },status=status.HTTP_200_OK)
              
             elif service_type.lower() in tv_services:
@@ -441,7 +442,8 @@ class VerifyNumberView(APIView):
                 else:
 
                     return Response({
-                        'data':response['content']
+                        'data':response['content'],
+                        'verified':True,
                         
                     },status=status.HTTP_200_OK)
             else:
