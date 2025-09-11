@@ -350,6 +350,8 @@ class Transaction(models.Model):
     otp=models.ForeignKey(OTP,null=True,blank=True,on_delete=models.SET_NULL,related_name='tx_otp')
     description = models.TextField(default="")
     reference_id = models.CharField(max_length=100, unique=True,default=generate_unique_identifier)
+    raw_response=models.JSONField(max_length=999999,null=True,blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

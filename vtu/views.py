@@ -247,7 +247,7 @@ class VtuServicesView(APIView):
                         transaction=Transaction.objects.create( user=request.user,
                                                                     transaction_type=transaction_type,
                                                                     status='processing',
-                                                                    amount=decimal.Decimal(float(data['price'])),
+                                                                    amount=decimal.Decimal(float(amount)),
                                                                     description='Data Bundle purchase',
                                                         )
                         
@@ -263,7 +263,7 @@ class VtuServicesView(APIView):
                         response = providers_dict[provider](data)
                         print(response)
                         
-                        wallet.balance -= decimal.Decimal(float(data['price']))
+                        wallet.balance -= decimal.Decimal(float(amount))
                         wallet.save()
                         transaction.status=response
                         transaction.save()
@@ -305,9 +305,15 @@ class VtuServicesView(APIView):
 
                         if res_status in ['completed', 'pending']:
                             transaction.status= res_status
+                            transaction.raw_response=res
                             transaction.save()
                             data=TransactionSerializer(transaction).data
-                            return Response({'data':data,'message':res_status,'pin':res},status=status.HTTP_200_OK)
+                            data['transaction_id']=data['raw_response']['content']['transactions']['transactionId']
+                            data['product_name']=data['raw_response']['content']['transactions']['product_name']
+                            data['token']=data['raw_response']['token']
+                            data['units']=data['raw_response']['units']
+                            del data['raw_response']
+                            return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
 
                         elif res_status == 'failed':
                             transaction.status= res_status
@@ -345,12 +351,16 @@ class VtuServicesView(APIView):
 
                         if res_status in ['completed', 'pending']:
                             transaction.status= res_status
+                            transaction.raw_response=res
                             transaction.save()
                             data=TransactionSerializer(transaction).data
+                            data['transaction_id']=data['raw_response']['content']['transactions']['transactionId']
+                            del data['raw_response']
                             return Response({'data':data,'message':res_status},status=status.HTTP_200_OK)
 
                         elif res_status == 'failed':
                             transaction.status= res_status
+                            transaction.raw_response=res
                             transaction.save()
                             threading.Thread(target=self.settle_failed_transaction,
                                 args=(wallet,transaction)
