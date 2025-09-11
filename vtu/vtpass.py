@@ -121,7 +121,7 @@ class VtuServicesUtils():
         payload={
             'request_id':str(data.get('request_id')),
             'serviceID':str(data['service_id']),
-            'amount':int(data['amount']),
+            'amount':int(data['price']),
             'phone':str(data['phone_no'])
 
         }
@@ -235,7 +235,7 @@ class VtuServicesUtils():
             'billersCode':str(data['meter_no']),
             'phone':str(data['phone_no']),
             'variation_code':data['meter_type'],
-            'amount':data['amount']
+            'amount':data['price']
 
         }
         print(payload)
