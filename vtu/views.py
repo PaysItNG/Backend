@@ -232,7 +232,7 @@ class VtuServicesView(APIView):
                             ).start()
 
                             return Response({'data':TransactionSerializer(transaction).data,
-                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_400_BAD_REQUEST)
+                                                'massage':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_200_OK)
 
                         else:
                             return Response({'data':TransactionSerializer(transaction).data,
@@ -276,7 +276,7 @@ class VtuServicesView(APIView):
                             )
                         else:
                             return Response(
-                                {'data':data,'massage':'Transaction failed refunds will be processed shortly within 5 seconds'}, status = status.HTTP_400_BAD_REQUEST)
+                                {'data':data,'massage':'Transaction failed refunds will be processed shortly within 5 seconds'}, status = status.HTTP_200_OK)
                         
         
                     if service_type == 'ELECTRICITY':
