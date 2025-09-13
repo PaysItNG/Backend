@@ -265,7 +265,7 @@ class VtuServicesView(APIView):
                         
                         wallet.balance -= decimal.Decimal(float(amount))
                         wallet.save()
-                        transaction.status=response
+                        transaction.status=res_status
                         transaction.save()
                         data=TransactionSerializer(transaction).data
                         if response=='completed':
