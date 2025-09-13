@@ -265,19 +265,29 @@ class VtuServicesView(APIView):
                         
                         wallet.balance -= decimal.Decimal(float(amount))
                         wallet.save()
-                        transaction.status=res_status
+                        transaction.status='processing'
                         transaction.save()
                         data=TransactionSerializer(transaction).data
-                        if response=='completed':
-                            transaction.status=res_status
+                        if response in ['completed', 'pending']:
+                            transaction.status=response
                             transaction.save()
                             return Response(
                                 {'data':data,"message":"Transaction successful"}, status = status.HTTP_200_OK
                             )
+                        elif response == 'failed':
+                            transaction.status= response
+                            transaction.save()
+                            threading.Thread(target=self.settle_failed_transaction,
+                                args=(wallet,transaction)
+                            ).start()
+
+                            return Response({'data':TransactionSerializer(transaction).data,
+                                                'message':'Transaction failed refunds will be processed shortly within 5 seconds'},status=status.HTTP_200_OK)
+
                         else:
-                            return Response(
-                                {'data':data,'message':'Transaction failed refunds will be processed shortly within 5 seconds'}, status = status.HTTP_200_OK)
-                        
+                            return Response({'data':TransactionSerializer(transaction).data,
+                                                'message':'processing'},status=status.HTTP_102_PROCESSING)
+
         
                     if service_type == 'ELECTRICITY':
                         
